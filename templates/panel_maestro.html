@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Maestro - Control Escolar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ===== ANIMACIONES ===== */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.3); }
+            70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .card-animate { animation: fadeInUp 0.4s ease both; }
+        .badge-activa { animation: pulse-green 2s infinite; }
+        .loading-spinner { animation: spin 1s linear infinite; }
+        
+        /* ===== SCROLL PERSONALIZADO ===== */
+        .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* ===== TRANSICIONES ===== */
+        .transition-all { transition: all 0.3s ease; }
+        .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        
+        /* ===== SIDEBAR ===== */
+        .sidebar-link {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.05);
+            border-left-color: #60a5fa;
+        }
+        .sidebar-link.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: #3b82f6;
+            color: #60a5fa;
+        }
+        
+        /* ===== BADGES ===== */
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .badge-activa { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .badge-pendiente { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+        .badge-finalizada { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        
+        /* ===== BOTONES ===== */
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-primary:hover { background: #2563eb; transform: scale(1.02); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .btn-success {
+            background: #22c55e;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-success:hover { background: #16a34a; transform: scale(1.02); }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-danger:hover { background: #dc2626; transform: scale(1.02); }
+        
+        /* ===== CARD ===== */
+        .clase-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 6px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .clase-card:hover {
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+        .clase-card.activa { border-left-color: #22c55e; }
+        .clase-card.pendiente { border-left-color: #eab308; }
+        .clase-card.finalizada { border-left-color: #ef4444; }
+        
+        /* ===== ESTADÍSTICAS ===== */
+        .stat-card {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.15);
+            transform: translateY(-3px);
+        }
+        .stat-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+        
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .sidebar-mobile {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                height: 100vh;
+                z-index: 50;
+                transition: left 0.3s ease;
+            }
+            .sidebar-mobile.open {
+                left: 0;
+            }
+            .overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 40;
+                display: none;
+            }
+            .overlay.open { display: block; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased">
+
+    <!-- ===== OVERLAY MÓVIL ===== -->
+    <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- ===== SIDEBAR ===== -->
+        <aside id="sidebar" class="sidebar-mobile w-72 bg-slate-900 text-white p-6 flex flex-col flex-shrink-0 overflow-y-auto scrollbar-thin">
+            
+            <!-- LOGO -->
+            <div class="flex items-center gap-3 mb-8 pb-6 border-b border-slate-700">
+                <div class="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold">Control Escolar</h2>
+                    <p class="text-xs text-slate-400">Sistema de Asistencia</p>
+                </div>
+            </div>
+            
+            <!-- NAVEGACIÓN -->
+            <nav class="flex-1 space-y-1">
+                <a href="#" id="btn-hoy" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-calendar-day w-5 text-center"></i>
+                    Clases de Hoy
+                    <span id="badge-hoy" class="ml-auto bg-blue-500/20 text-blue-300 text-xs px-2 py-0.5 rounded-full">0</span>
+                </a>
+                <a href="#" id="btn-historial" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-history w-5 text-center"></i>
+                    Historial
+                    <span id="badge-historial" class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full">0</span>
+                </a>
+                <a href="#" id="btn-estadisticas" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-chart-bar w-5 text-center"></i>
+                    Estadísticas
+                </a>
+                <hr class="my-4 border-slate-700">
+                <a href="#" id="btn-config" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-cog w-5 text-center"></i>
+                    Configuración
+                </a>
+            </nav>
+            
+            <!-- PERFIL -->
+            <div class="pt-4 border-t border-slate-700">
+                <div class="flex items-center gap-3 mb-3">
+                    <div id="avatar-maestro" class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-lg">
+                        M
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate" id="nombre-maestro">Maestro</p>
+                        <p class="text-xs text-slate-400 truncate" id="matricula-maestro">Matrícula</p>
+                    </div>
+                </div>
+                <button id="btn-logout" class="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scrollbar-thin">
+            
+            <!-- HEADER MÓVIL -->
+            <div class="flex items-center justify-between mb-6 md:hidden">
+                <button onclick="toggleSidebar()" class="text-slate-600 text-2xl">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="text-lg font-bold text-slate-800">Control Escolar</h1>
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <span id="avatar-movil">M</span>
+                </div>
+            </div>
+            
+            <!-- CONTENIDO DINÁMICO -->
+            <div id="contenido-principal">
+                <!-- Cargado por JavaScript -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ============================================
+        // ===== CONFIGURACIÓN INICIAL =====
+        // ============================================
+        
+        const maestroId = localStorage.getItem('maestro_id');
+        const nombreMaestro = localStorage.getItem('maestro_nombre') || 'Maestro';
+        const matriculaMaestro = localStorage.getItem('maestro_matricula') || '';
+        
+        // ============================================
+        // ===== ACTUALIZAR UI =====
+        // ============================================
+        
+        function actualizarUI() {
+            // Nombre y matrícula
+            document.getElementById('nombre-maestro').textContent = nombreMaestro;
+            document.getElementById('matricula-maestro').textContent = matriculaMaestro;
+            
+            // Avatar
+            const inicial = nombreMaestro.charAt(0).toUpperCase();
+            document.getElementById('avatar-maestro').textContent = inicial;
+            document.getElementById('avatar-movil').textContent = inicial;
+        }
+        actualizarUI();
+        
+        // ============================================
+        // ===== VALIDAR SESIÓN =====
+        // ============================================
+        
+        if (!maestroId) {
+            window.location.href = '/login';
+        }
+
+        // ============================================
+        // ===== SIDEBAR TOGGLE (MÓVIL) =====
+        // ============================================
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        // Cerrar sidebar al hacer clic en un link (móvil)
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 768) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // ============================================
+        // ===== NAVEGACIÓN =====
+        // ============================================
+        
+        function setActiveTab(tabId) {
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // ============================================
+        // ===== FUNCIÓN: CARGAR CLASES DE HOY =====
+        // ============================================
+        
+       async function cargarClasesHoy() {
+    const contenedor = document.getElementById('contenido-principal');
+    
+    contenedor.innerHTML = `
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="text-slate-500">Cargando clases...</p>
+            </div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`/api/maestro/clases-hoy/${maestroId}`);
+        const clases = await response.json();
+
+        if (!response.ok) throw new Error(clases.detail || 'Error al cargar clases');
+
+        // Actualizar badge
+        document.getElementById('badge-hoy').textContent = clases.length || 0;
+
+        if (clases.length === 0) {
+            contenedor.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-smile text-4xl text-slate-300"></i>
+                    </div>
+                    <h2 class="text-xl font-semibold text-slate-600">¡Qué descanso!</h2>
+                    <p class="text-slate-400 mt-1">No tienes clases programadas para hoy</p>
+                    <p class="text-xs text-slate-300 mt-3">${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Contar activas y próximas
+        const activas = clases.filter(c => c.estado === 'activa').length;
+        const proximas = clases.filter(c => c.estado === 'proxima' || c.es_proxima).length;
+
+        let html = `
+            <!-- HEADER -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+                        <i class="fas fa-calendar-day text-blue-500"></i>
+                        Clases de Hoy
+                    </h1>
+                    <p class="text-sm text-slate-500 mt-1">
+                        ${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                </div>
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="bg-green-100 text-green-700 text-sm font-medium px-4 py-2 rounded-full flex items-center gap-2">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        ${activas} activas
+                    </span>
+                    <span class="bg-blue-100 text-blue-700 text-sm font-medium px-4 py-2 rounded-full">
+                        ⭐ ${proximas} próximas
+                    </span>
+                    <span class="bg-slate-100 text-slate-600 text-sm font-medium px-4 py-2 rounded-full">
+                        ${clases.length} total
+                    </span>
+                </div>
+            </div>
+
+            <!-- GRID DE CLASES -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        `;
+
+        
+for (let i = 0; i < clases.length; i++) {
+    const c = clases[i];
+    
+    // 🔥 Estados correctos
+    const esActiva = c.estado === 'activa';
+    const esProxima = c.es_proxima === true;  // Solo la marcada por el backend
+    const esFinalizada = c.estado === 'finalizada';
+    const esPendiente = c.estado === 'pendiente' && !esProxima;
+    
+    let colorBorde = 'border-gray-300';
+    let estadoColor = 'text-gray-600 bg-gray-100';
+    let estadoIcono = 'fa-clock';
+    let estadoTexto = c.estado.toUpperCase();
+    let indicadorExtra = '';
+    
+    if (esActiva) {
+        colorBorde = 'border-green-500';
+        estadoColor = 'text-green-800 bg-green-100';
+        estadoIcono = 'fa-circle';
+        estadoTexto = '🟢 ACTIVA';
+        indicadorExtra = '<p class="text-xs text-green-500 font-semibold">🟢 En curso</p>';
+    } else if (esProxima) {
+        colorBorde = 'border-blue-500';
+        estadoColor = 'text-blue-800 bg-blue-100';
+        estadoIcono = 'fa-arrow-right';
+        estadoTexto = '🔵 PRÓXIMA';
+        indicadorExtra = '<p class="text-xs text-blue-500 font-semibold">⭐ Próxima clase</p>';
+    } else if (esFinalizada) {
+        colorBorde = 'border-red-500';
+        estadoColor = 'text-red-800 bg-red-100';
+        estadoIcono = 'fa-check-circle';
+        estadoTexto = '🔴 FINALIZADA';
+    } else if (esPendiente) {
+        colorBorde = 'border-yellow-500';
+        estadoColor = 'text-yellow-800 bg-yellow-100';
+        estadoIcono = 'fa-hourglass-half';
+        estadoTexto = '🟡 PENDIENTE';
+    }
+    
+    // 🔥 BOTONES
+    let acciones = '';
+    
+    if (esActiva && c.puede_ver_asistencia) {
+        acciones = `
+            <div class="flex flex-col gap-2 mt-3">
+                <a href="/clase-activa/${c.id}" class="btn-success w-full justify-center text-sm">
+                    <i class="fas fa-users"></i> Ver Asistencia
+                </a>
+                <p class="text-xs text-green-600 text-center">📌 Clase en curso</p>
+            </div>
+        `;
+    } else if (esProxima && c.puede_abrir) {
+        acciones = `
+            <div class="flex flex-col gap-2 mt-3">
+                <button onclick="abrirSesion(${c.id})" 
+                        class="btn-primary w-full justify-center text-sm bg-blue-600 hover:bg-blue-700">
+                    <i class="fas fa-door-open"></i> Abrir Sesión
+                </button>
+                <p class="text-xs text-blue-600 text-center">⏰ Próxima clase - Abre sesión</p>
+            </div>
+        `;
+    } else if (esPendiente) {
+        acciones = `
+            <div class="mt-3">
+                <button disabled class="w-full bg-gray-300 text-gray-500 font-semibold py-2 px-4 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                    <i class="fas fa-clock"></i> Espera tu turno
+                </button>
+                <p class="text-xs text-yellow-600 text-center mt-1">⏳ Clase pendiente</p>
+            </div>
+        `;
+    } else if (esFinalizada) {
+        acciones = `
+            <button disabled class="w-full mt-3 bg-gray-100 text-gray-400 font-semibold py-2 px-4 rounded-lg cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                <i class="fas fa-check-circle"></i> Clase Finalizada
+            </button>
+        `;
+    }
+    
+    html += `
+        <div class="clase-card ${colorBorde} card-animate" style="animation-delay: ${i * 50}ms">
+            <div class="flex items-start justify-between gap-2">
+                <h3 class="text-lg font-bold text-slate-800 flex-1">${c.materia}</h3>
+                <span class="badge ${estadoColor} flex-shrink-0">
+                    <i class="fas ${estadoIcono} text-xs"></i>
+                    ${estadoTexto}
+                </span>
+            </div>
+            <div class="mt-3 space-y-1 text-sm text-slate-500">
+                <p><i class="far fa-clock w-5 text-slate-400"></i> ${c.hora_inicio} - ${c.hora_fin}</p>
+                <p><i class="far fa-calendar-alt w-5 text-slate-400"></i> ${c.dia.charAt(0).toUpperCase() + c.dia.slice(1)}</p>
+                ${indicadorExtra}
+            </div>
+            ${acciones}
+        </div>
+    `;
+}
+        html += `</div>`;
+        contenedor.innerHTML = html;
+
+    } catch (error) {
+        contenedor.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <h3 class="text-lg font-semibold text-red-700">Error al cargar las clases</h3>
+                <p class="text-red-500 text-sm">${error.message}</p>
+                <button onclick="cargarClasesHoy()" class="mt-4 btn-primary">
+                    <i class="fas fa-redo"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+        // ============================================
+        // ===== FUNCIÓN: ABRIR SESIÓN =====
+        // ============================================
+        
+        async function abrirSesion(claseId) {
+            if (!confirm('¿Seguro que quieres abrir la sesión para esta clase?')) return;
+
+            try {
+                const response = await fetch('/api/sesiones/abrir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clase_id: claseId })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert('❌ Error: ' + data.detail);
+                    return;
+                }
+
+                alert('✅ Sesión abierta correctamente');
+                cargarClasesHoy();
+
+            } catch (error) {
+                alert('❌ Error al abrir la sesión: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // ===== FUNCIÓN: CARGAR HISTORIAL =====
+        // ============================================
+        
+        // ============================================
+// ===== VARIABLES DE FILTROS =====
+// ============================================
+
+let filtroHistorial = 'dia';
+let fechaHistorial = '';
+let busquedaHistorial = '';
+
+
+
+// ============================================
+// ===== CERRAR SESIONES AUTOMÁTICAMENTE =====
+// ============================================
+
+async function cerrarSesionesAutomaticas() {
+    try {
+        const response = await fetch('/api/sesiones/cerrar-automaticas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        
+        if (data.total > 0) {
+            console.log(`✅ ${data.total} sesiones cerradas automáticamente:`, data.sesiones_cerradas);
+            // Recargar las clases para actualizar la vista
+            cargarClasesHoy();
+        }
+    } catch (error) {
+        console.error('❌ Error al cerrar sesiones:', error);
+    }
+}
+
+// ============================================
+// ===== FUNCIÓN: CARGAR HISTORIAL CON FILTROS =====
+// ============================================
+
+async function cargarHistorial() {
+    const contenedor = document.getElementById('contenido-principal');
+    
+    // Construir URL con parámetros
+    let url = `/api/maestro/historial/${maestroId}`;
+    url += `?filtro=${filtroHistorial}`;
+    if (fechaHistorial) url += `&fecha=${fechaHistorial}`;
+    if (busquedaHistorial) url += `&busqueda=${encodeURIComponent(busquedaHistorial)}`;
+    
+    contenedor.innerHTML = `
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="text-slate-500">Cargando historial...</p>
+            </div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(url);
+        const historial = await response.json();
+
+        if (!response.ok) throw new Error(historial.detail || 'Error al cargar historial');
+
+        document.getElementById('badge-historial').textContent = historial.length || 0;
+
+        // ===== FILTROS UI =====
+        let html = `
+            <div class="mb-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+                            <i class="fas fa-history text-blue-500"></i>
+                            Historial de Clases
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1">${historial.length} clases encontradas</p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-slate-500">Filtrar:</span>
+                        <button onclick="setFiltro('dia')" 
+                                class="filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${filtroHistorial === 'dia' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                            <i class="fas fa-calendar-day"></i> Día
+                        </button>
+                        <button onclick="setFiltro('semana')" 
+                                class="filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${filtroHistorial === 'semana' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                            <i class="fas fa-calendar-week"></i> Semana
+                        </button>
+                        <button onclick="setFiltro('mes')" 
+                                class="filter-btn px-3 py-1.5 rounded-lg text-sm font-medium transition ${filtroHistorial === 'mes' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+                            <i class="fas fa-calendar-alt"></i> Mes
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Barra de búsqueda y selector de fecha -->
+                <div class="mt-4 flex flex-col sm:flex-row gap-3">
+                    <div class="flex-1 relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" 
+                               id="buscar-historial" 
+                               placeholder="Buscar por materia..." 
+                               class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                               value="${busquedaHistorial}"
+                               oninput="buscarHistorial(this.value)">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-calendar text-slate-400"></i>
+                        <input type="date" 
+                               id="fecha-historial" 
+                               class="px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                               value="${fechaHistorial}"
+                               onchange="cambiarFechaHistorial(this.value)">
+                        <button onclick="limpiarFiltros()" 
+                                class="px-3 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg transition text-slate-600">
+                            <i class="fas fa-times"></i> Limpiar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (historial.length === 0) {
+            html += `
+                <div class="bg-white rounded-2xl shadow-lg p-12 text-center">
+                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-history text-4xl text-slate-300"></i>
+                    </div>
+                    <h2 class="text-xl font-semibold text-slate-600">No hay clases en este período</h2>
+                    <p class="text-slate-400 mt-1">Prueba con otro filtro o fecha</p>
+                </div>
+            `;
+            contenedor.innerHTML = html;
+            return;
+        }
+
+// ===== LISTA DE CLASES =====
+html += `<div class="space-y-4">`;
+
+// 🔥 CORREGIDO: Agrupar por fecha y asegurar el sesion_id correcto
+const grupos = {};
+for (const c of historial) {
+    if (!grupos[c.fecha]) grupos[c.fecha] = [];
+    grupos[c.fecha].push(c);
+}
+
+const fechasOrdenadas = Object.keys(grupos).sort((a, b) => b.localeCompare(a));
+
+for (const fecha of fechasOrdenadas) {
+    const clasesDelDia = grupos[fecha];
+    
+    // 🔥 Formatear fecha correctamente
+    const fechaObj = new Date(fecha + 'T00:00:00');
+    const fechaFormateada = fechaObj.toLocaleDateString('es-ES', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    const totalPresentes = clasesDelDia.reduce((sum, c) => sum + c.total_presentes, 0);
+    const totalInscritos = clasesDelDia.reduce((sum, c) => sum + c.total_inscritos, 0);
+
+    html += `
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
+            <div class="bg-slate-50 px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-calendar-day text-blue-500"></i>
+                    <h3 class="font-semibold text-slate-700">${fechaFormateada}</h3>
+                    <span class="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                        ${clasesDelDia.length} clases
+                    </span>
+                </div>
+                <div class="flex items-center gap-4 text-sm mt-1 sm:mt-0">
+                    <span class="text-green-600">
+                        <i class="fas fa-check-circle"></i> ${totalPresentes} presentes
+                    </span>
+                    <span class="text-slate-500">
+                        <i class="fas fa-user"></i> ${totalInscritos} inscritos
+                    </span>
+                    <span class="text-blue-600 font-semibold">
+                        ${totalInscritos > 0 ? Math.round(totalPresentes / totalInscritos * 100) : 0}% promedio
+                    </span>
+                </div>
+            </div>
+            <div class="divide-y divide-slate-100">
+    `;
+
+    // 🔥 MOSTRAR CADA CLASE CON SU PROPIO sesion_id
+    for (const c of clasesDelDia) {
+        const porcentaje = c.porcentaje || 0;
+        const colorPorcentaje = porcentaje >= 80 ? 'text-green-600' : porcentaje >= 60 ? 'text-yellow-600' : 'text-red-600';
+        
+        html += `
+            <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/50 transition">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-medium text-slate-800">${c.materia}</span>
+                        ${c.activa ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">ACTIVA</span>' : ''}
+                    </div>
+                    <p class="text-sm text-slate-500">
+                        <i class="far fa-clock mr-1"></i> ${c.hora_inicio} - ${c.hora_fin}
+                    </p>
+                </div>
+                <div class="flex items-center gap-4 text-sm flex-wrap">
+                    <span class="text-green-600">
+                        <i class="fas fa-check-circle"></i> ${c.total_presentes || 0} presentes
+                    </span>
+                    <span class="text-slate-500">
+                        <i class="fas fa-user"></i> ${c.total_inscritos || 0} inscritos
+                    </span>
+                    <span class="font-semibold ${colorPorcentaje}">
+                        ${porcentaje}%
+                    </span>
+                    <a href="/clase-historial/${c.sesion_id}" 
+                       class="btn-primary text-xs px-3 py-1.5">
+                        <i class="fas fa-eye"></i> Detalle
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    html += `
+            </div>
+        </div>
+    `;
+}
+
+html += `</div>`;
+contenedor.innerHTML = html;
+
+    } catch (error) {
+        contenedor.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <h3 class="text-lg font-semibold text-red-700">Error al cargar el historial</h3>
+                <p class="text-red-500 text-sm">${error.message}</p>
+                <button onclick="cargarHistorial()" class="mt-4 btn-primary">
+                    <i class="fas fa-redo"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
+// ============================================
+// ===== FUNCIONES DE FILTROS =====
+// ============================================
+
+function setFiltro(tipo) {
+    filtroHistorial = tipo;
+    fechaHistorial = '';
+    document.getElementById('fecha-historial').value = '';
+    cargarHistorial();
+}
+
+function buscarHistorial(valor) {
+    busquedaHistorial = valor;
+    cargarHistorial();
+}
+
+function cambiarFechaHistorial(valor) {
+    fechaHistorial = valor;
+    if (valor) {
+        filtroHistorial = 'dia';
+    }
+    cargarHistorial();
+}
+
+function limpiarFiltros() {
+    filtroHistorial = 'dia';
+    fechaHistorial = '';
+    busquedaHistorial = '';
+    document.getElementById('buscar-historial').value = '';
+    document.getElementById('fecha-historial').value = '';
+    cargarHistorial();
+}
+
+        // ============================================
+        // ===== FUNCIÓN: CARGAR ESTADÍSTICAS =====
+        // ============================================
+        
+        async function cargarEstadisticas() {
+            const contenedor = document.getElementById('contenido-principal');
+            
+            contenedor.innerHTML = `
+                <div class="flex items-center justify-center h-64">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                        <p class="text-slate-500">Cargando estadísticas...</p>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/maestro/estadisticas/${maestroId}`);
+                const stats = await response.json();
+
+                if (!response.ok) throw new Error(stats.detail || 'Error al cargar estadísticas');
+
+                const html = `
+                    <div class="mb-6">
+                        <h1 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+                            <i class="fas fa-chart-bar text-blue-500"></i>
+                            Estadísticas del Maestro
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1">Resumen de tu actividad académica</p>
+                    </div>
+
+                    <!-- Tarjetas de estadísticas -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Total Clases</p>
+                                    <p class="text-3xl font-bold text-blue-600">${stats.total_clases || 0}</p>
+                                </div>
+                                <div class="stat-icon bg-blue-100 text-blue-600">
+                                    <i class="fas fa-chalkboard"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Total Alumnos</p>
+                                    <p class="text-3xl font-bold text-green-600">${stats.total_alumnos || 0}</p>
+                                </div>
+                                <div class="stat-icon bg-green-100 text-green-600">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Total Asistencias</p>
+                                    <p class="text-3xl font-bold text-purple-600">${stats.total_asistencias || 0}</p>
+                                </div>
+                                <div class="stat-icon bg-purple-100 text-purple-600">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Asistencia Promedio</p>
+                                    <p class="text-3xl font-bold text-orange-600">${stats.porcentaje_global || 0}%</p>
+                                </div>
+                                <div class="stat-icon bg-orange-100 text-orange-600">
+                                    <i class="fas fa-percent"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalles adicionales -->
+                    <div class="bg-white rounded-xl shadow-sm p-6">
+                        <h3 class="font-semibold text-slate-700 mb-4">📊 Detalles Adicionales</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="bg-slate-50 rounded-lg p-4">
+                                <p class="text-sm text-slate-500">Total Sesiones</p>
+                                <p class="text-2xl font-bold text-slate-800">${stats.total_sesiones || 0}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-4">
+                                <p class="text-sm text-slate-500">Promedio por Sesión</p>
+                                <p class="text-2xl font-bold text-slate-800">${stats.promedio_asistencia_por_sesion || 0}</p>
+                            </div>
+                            <div class="bg-slate-50 rounded-lg p-4 sm:col-span-2">
+                                <p class="text-sm text-slate-500">Rendimiento General</p>
+                                <div class="mt-2 w-full bg-slate-200 rounded-full h-3">
+                                    <div class="bg-blue-600 h-3 rounded-full transition-all" style="width: ${Math.min(stats.porcentaje_global || 0, 100)}%"></div>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">${stats.porcentaje_global || 0}% de asistencia global</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                contenedor.innerHTML = html;
+
+            } catch (error) {
+                contenedor.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                        <h3 class="text-lg font-semibold text-red-700">Error al cargar estadísticas</h3>
+                        <p class="text-red-500 text-sm">${error.message}</p>
+                        <button onclick="cargarEstadisticas()" class="mt-4 btn-primary">
+                            <i class="fas fa-redo"></i> Reintentar
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================
+        // ===== CONFIGURACIÓN =====
+        // ============================================
+        
+        function cargarConfiguracion() {
+            const contenedor = document.getElementById('contenido-principal');
+            contenedor.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-8">
+                    <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3 mb-6">
+                        <i class="fas fa-cog text-blue-500"></i>
+                        Configuración
+                    </h1>
+                    <div class="space-y-4">
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <p class="text-sm text-slate-500">👤 Nombre</p>
+                            <p class="font-medium text-slate-800">${nombreMaestro}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <p class="text-sm text-slate-500">📋 Matrícula</p>
+                            <p class="font-medium text-slate-800">${matriculaMaestro}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <p class="text-sm text-slate-500">🆔 ID</p>
+                            <p class="font-mono text-sm text-slate-600">${maestroId}</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <p class="text-sm text-slate-500">📱 Dispositivo</p>
+                            <p class="text-sm text-slate-600">${navigator.userAgent}</p>
+                        </div>
+                        <button onclick="cargarClasesHoy()" class="btn-primary">
+                            <i class="fas fa-arrow-left"></i> Volver al Panel
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============================================
+        // ===== NAVEGACIÓN PRINCIPAL =====
+        // ============================================
+        
+        document.getElementById('btn-hoy').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-hoy');
+            cargarClasesHoy();
+        });
+
+        document.getElementById('btn-historial').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-historial');
+            cargarHistorial();
+        });
+
+        document.getElementById('btn-estadisticas').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-estadisticas');
+            cargarEstadisticas();
+        });
+
+        document.getElementById('btn-config').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-config');
+            cargarConfiguracion();
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', function() {
+            if (confirm('¿Seguro que quieres cerrar sesión?')) {
+                localStorage.removeItem('maestro_id');
+                localStorage.removeItem('maestro_nombre');
+                localStorage.removeItem('maestro_matricula');
+                window.location.href = '/login';
+            }
+        });
+
+        // ============================================
+        // ===== INICIALIZAR =====
+        // ============================================
+
+
+// Cerrar sesiones automáticas al cargar
+cerrarSesionesAutomaticas();
+
+// Verificar cada 30 segundos si hay sesiones que cerrar
+setInterval(() => {
+    cerrarSesionesAutomaticas();
+}, 30000);  // 30 segundos
+        
+        cargarClasesHoy();
+    </script>
+</body>
+</html>

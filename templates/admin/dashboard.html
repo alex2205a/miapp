@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrador</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .sidebar-link {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover {
+            background: rgba(255,255,255,0.05);
+            border-left-color: #60a5fa;
+        }
+        .sidebar-link.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-left-color: #3b82f6;
+            color: #60a5fa;
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px -10px rgba(0,0,0,0.15);
+        }
+        .scrollbar-thin::-webkit-scrollbar { width: 5px; }
+        .scrollbar-thin::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media (max-width: 768px) {
+            .sidebar-mobile {
+                position: fixed;
+                left: -100%;
+                top: 0;
+                height: 100vh;
+                z-index: 50;
+                transition: left 0.3s ease;
+            }
+            .sidebar-mobile.open { left: 0; }
+            .overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 40;
+                display: none;
+            }
+            .overlay.open { display: block; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased">
+
+    <div id="overlay" class="overlay" onclick="toggleSidebar()"></div>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="sidebar-mobile w-72 bg-slate-900 text-white p-6 flex flex-col flex-shrink-0 overflow-y-auto scrollbar-thin">
+            <div class="flex items-center gap-3 mb-8 pb-6 border-b border-slate-700">
+                <div class="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-user-shield text-white text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold">Panel Admin</h2>
+                    <p class="text-xs text-slate-400">Control Escolar</p>
+                </div>
+            </div>
+
+            <nav class="flex-1 space-y-1">
+                <a href="#" id="btn-dashboard" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-chart-pie w-5 text-center"></i> Dashboard
+                </a>
+                <a href="#" id="btn-usuarios" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-users w-5 text-center"></i> Usuarios
+                  
+
+                <a href="#" id="btn-carreras" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-graduation-cap w-5 text-center"></i> Carreras
+                    
+                </a>
+                <a href="#" id="btn-clases" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-chalkboard w-5 text-center"></i> Clases
+                   
+                </a>
+                <a href="#" id="btn-zonas" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-wifi w-5 text-center"></i> Zonas WiFi
+                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-zonas">0</span>
+                </a>
+                <a href="#" id="btn-inscripciones" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-user-graduate w-5 text-center"></i> Inscripciones
+                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-inscripciones">0</span>
+                </a>
+                <a href="#" id="btn-sesiones" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-door-open w-5 text-center"></i> Sesiones
+                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-sesiones">0</span>
+                </a>
+                <hr class="my-4 border-slate-700">
+                <a href="#" id="btn-reportes" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+                    <i class="fas fa-file-alt w-5 text-center"></i> Reportes
+                </a>
+            </nav>
+
+            <div class="pt-4 border-t border-slate-700">
+                <div class="flex items-center gap-3 mb-3">
+                    <div id="avatar-admin" class="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-full flex items-center justify-center font-bold text-white text-sm shadow-lg">A</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate" id="nombre-admin">Administrador</p>
+                        <p class="text-xs text-slate-400 truncate" id="matricula-admin">Matrícula</p>
+                    </div>
+                </div>
+                <button id="btn-logout" class="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm py-2 rounded-lg transition flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scrollbar-thin">
+            <div class="flex items-center justify-between mb-6 md:hidden">
+                <button onclick="toggleSidebar()" class="text-slate-600 text-2xl">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="text-lg font-bold text-slate-800">Panel Admin</h1>
+                <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    <span id="avatar-movil">A</span>
+                </div>
+            </div>
+
+            <div id="contenido-principal">
+                <!-- Cargado por JavaScript -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURACIÓN INICIAL
+        // ============================================
+        const adminId = localStorage.getItem('admin_id');
+        const nombreAdmin = localStorage.getItem('admin_nombre') || 'Administrador';
+        const matriculaAdmin = localStorage.getItem('admin_matricula') || '';
+
+        function actualizarUI() {
+            document.getElementById('nombre-admin').textContent = nombreAdmin;
+            document.getElementById('matricula-admin').textContent = matriculaAdmin;
+            const inicial = nombreAdmin.charAt(0).toUpperCase();
+            document.getElementById('avatar-admin').textContent = inicial;
+            document.getElementById('avatar-movil').textContent = inicial;
+        }
+        actualizarUI();
+
+        if (!adminId) {
+            window.location.href = '/login';
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('open');
+        }
+
+        document.querySelectorAll('.sidebar-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 768) toggleSidebar();
+            });
+        });
+
+        function setActiveTab(tabId) {
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // ============================================
+        // CARGAR DASHBOARD
+        // ============================================
+async function cargarUsuarios() {
+
+    const contenedor = document.getElementById('contenido-principal');
+
+    contenedor.innerHTML = `
+        <div class="flex items-center justify-center h-64">
+            <div class="text-center">
+                <i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="text-slate-500">Cargando usuarios...</p>
+            </div>
+        </div>
+    `;
+
+
+    try {
+
+        const response = await fetch('/admin/usuarios', {cache:'no-cache'});
+
+
+        if(!response.ok){
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+
+        const html = await response.text();
+
+        contenedor.innerHTML = html;
+
+
+
+        // Ejecutar JS del archivo cargado
+        const scripts = contenedor.querySelectorAll('script');
+
+        scripts.forEach(oldScript=>{
+
+            const nuevo = document.createElement('script');
+
+            if(oldScript.src){
+                nuevo.src = oldScript.src;
+            }else{
+                nuevo.textContent = oldScript.textContent;
+            }
+
+            document.body.appendChild(nuevo);
+
+        });
+
+
+        console.log("Usuarios cargados correctamente");
+
+
+    }catch(error){
+
+        contenedor.innerHTML=`
+
+        <div class="bg-red-100 p-6 rounded-xl text-red-700">
+
+            Error cargando usuarios:
+            ${error.message}
+
+        </div>
+
+        `;
+
+    }
+
+}
+
+async function cargarVista(url, contenedorId) {
+    const contenedor = document.getElementById(contenedorId);
+    // Limpiar scripts anteriores (opcional, pero ayuda)
+    const oldScripts = contenedor.querySelectorAll('script');
+    oldScripts.forEach(script => script.remove());
+
+    contenedor.innerHTML = `<div class="flex items-center justify-center h-64"><div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i><p class="text-slate-500">Cargando...</p></div></div>`;
+
+    try {
+        const response = await fetch(url, { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+        contenedor.innerHTML = html;
+
+        // Ejecutar los scripts del contenido
+        const scripts = contenedor.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            newScript.textContent = oldScript.textContent;
+            if (oldScript.src) newScript.src = oldScript.src;
+            if (oldScript.type) newScript.type = oldScript.type;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        console.log(`✅ Vista cargada: ${url}`);
+    } catch (error) {
+        contenedor.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center"><i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i><h3 class="text-lg font-semibold text-red-700">Error al cargar</h3><p class="text-red-500 text-sm">${error.message}</p><button onclick="cargarVista('${url}','${contenedorId}')" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition"><i class="fas fa-redo"></i> Reintentar</button></div>`;
+    }
+}
+
+
+        async function cargarDashboard() {
+            const contenedor = document.getElementById('contenido-principal');
+
+            try {
+                const response = await fetch('/api/admin/estadisticas');
+                const stats = await response.json();
+
+                const html = `
+                    <div class="mb-6">
+                        <h1 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+                            <i class="fas fa-chart-pie text-purple-500"></i> Dashboard
+                        </h1>
+                        <p class="text-sm text-slate-500 mt-1">Resumen general del sistema</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+                        <div class="bg-white rounded-xl shadow-sm p-6 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Usuarios</p>
+                                    <p class="text-3xl font-bold text-slate-800">${stats.total_usuarios || 0}</p>
+                                    <p class="text-xs text-slate-400">${stats.total_maestros || 0} maestros · ${stats.total_alumnos || 0} alumnos</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Clases</p>
+                                    <p class="text-3xl font-bold text-slate-800">${stats.total_clases || 0}</p>
+                                    <p class="text-xs text-slate-400">${stats.clases_hoy || 0} hoy</p>
+                                </div>
+                                <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xl">
+                                    <i class="fas fa-chalkboard"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Inscripciones</p>
+                                    <p class="text-3xl font-bold text-slate-800">${stats.total_inscripciones || 0}</p>
+                                    <p class="text-xs text-slate-400">${stats.total_alumnos || 0} alumnos</p>
+                                </div>
+                                <div class="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-yellow-600 text-xl">
+                                    <i class="fas fa-user-graduate"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6 stat-card">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-slate-500">Asistencias hoy</p>
+                                    <p class="text-3xl font-bold text-slate-800">${stats.asistencias_hoy || 0}</p>
+                                    <p class="text-xs text-slate-400">${stats.sesiones_activas || 0} sesiones activas</p>
+                                </div>
+                                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center text-purple-600 text-xl">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="font-semibold text-slate-700 mb-4">📊 Asistencias por clase (hoy)</h3>
+                            <div class="space-y-3">
+                                ${stats.asistencias_por_clase && stats.asistencias_por_clase.length > 0
+                                    ? stats.asistencias_por_clase.map(c => `
+                                        <div>
+                                            <div class="flex justify-between text-sm">
+                                                <span>${c.nombre_materia}</span>
+                                                <span>${c.presentes}/${c.total} (${Math.round(c.presentes/c.total*100)}%)</span>
+                                            </div>
+                                            <div class="w-full bg-slate-200 rounded-full h-2">
+                                                <div class="bg-blue-600 h-2 rounded-full" style="width: ${Math.round(c.presentes/c.total*100)}%"></div>
+                                            </div>
+                                        </div>
+                                    `).join('')
+                                    : '<p class="text-slate-400 text-sm">No hay asistencias registradas hoy</p>'
+                                }
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h3 class="font-semibold text-slate-700 mb-4">⚡ Últimas actividades</h3>
+                            <ul class="space-y-2 text-sm text-slate-600">
+                                ${stats.ultimas_actividades && stats.ultimas_actividades.length > 0
+                                    ? stats.ultimas_actividades.map(a => `
+                                        <li class="flex items-center gap-2 border-b border-slate-100 pb-2">
+                                            <i class="fas fa-circle text-xs text-blue-500"></i>
+                                            <span>${a.descripcion}</span>
+                                            <span class="ml-auto text-xs text-slate-400">${a.hora}</span>
+                                        </li>
+                                    `).join('')
+                                    : '<li class="text-slate-400 text-sm">No hay actividades recientes</li>'
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                contenedor.innerHTML = html;
+            } catch (error) {
+                contenedor.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                        <h3 class="text-lg font-semibold text-red-700">Error al cargar el dashboard</h3>
+                        <p class="text-red-500 text-sm">${error.message}</p>
+                        <button onclick="cargarDashboard()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+                            <i class="fas fa-redo"></i> Reintentar
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================
+        // NAVEGACIÓN PRINCIPAL
+        // ============================================
+        document.getElementById('btn-dashboard').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-dashboard');
+            cargarDashboard();
+        });
+document.getElementById('btn-usuarios').addEventListener('click', function(e) {
+    e.preventDefault();
+    setActiveTab('btn-usuarios');
+    cargarVista('/admin/usuarios', 'contenido-principal');
+});
+
+document.getElementById('btn-clases').addEventListener('click', function(e) {
+    e.preventDefault();
+    setActiveTab('btn-clases');
+    cargarVista('/admin/clases', 'contenido-principal');
+});
+
+document.getElementById('btn-carreras').addEventListener('click', function(e) {
+    e.preventDefault();
+    setActiveTab('btn-carreras');
+    cargarVista('/admin/carreras', 'contenido-principal');
+});
+
+        document.getElementById('btn-zonas').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-zonas');
+            document.getElementById('contenido-principal').innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                    <i class="fas fa-wifi text-6xl text-green-300 mb-4"></i>
+                    <h2 class="text-xl font-semibold text-slate-600">Gestión de Zonas WiFi</h2>
+                    <p class="text-slate-400">Próximamente</p>
+                </div>
+            `;
+        });
+
+        document.getElementById('btn-inscripciones').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-inscripciones');
+            document.getElementById('contenido-principal').innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                    <i class="fas fa-user-graduate text-6xl text-yellow-300 mb-4"></i>
+                    <h2 class="text-xl font-semibold text-slate-600">Gestión de Inscripciones</h2>
+                    <p class="text-slate-400">Próximamente</p>
+                </div>
+            `;
+        });
+
+        document.getElementById('btn-sesiones').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-sesiones');
+            document.getElementById('contenido-principal').innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                    <i class="fas fa-door-open text-6xl text-orange-300 mb-4"></i>
+                    <h2 class="text-xl font-semibold text-slate-600">Gestión de Sesiones</h2>
+                    <p class="text-slate-400">Próximamente</p>
+                </div>
+            `;
+        });
+
+        document.getElementById('btn-reportes').addEventListener('click', function(e) {
+            e.preventDefault();
+            setActiveTab('btn-reportes');
+            document.getElementById('contenido-principal').innerHTML = `
+                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
+                    <i class="fas fa-file-alt text-6xl text-red-300 mb-4"></i>
+                    <h2 class="text-xl font-semibold text-slate-600">Reportes</h2>
+                    <p class="text-slate-400">Próximamente</p>
+                </div>
+            `;
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', function() {
+            if (confirm('¿Seguro que quieres cerrar sesión?')) {
+                localStorage.removeItem('admin_id');
+                localStorage.removeItem('admin_nombre');
+                localStorage.removeItem('admin_matricula');
+                window.location.href = '/login';
+            }
+        });
+
+        // ============================================
+        // INICIALIZAR
+        // ============================================
+        cargarDashboard();
+    </script>
+</body>
+</html>

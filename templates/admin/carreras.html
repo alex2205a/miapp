@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carreras y Grupos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        .btn-primary { background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-success { background: #22c55e; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-secondary { background: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .carrera-item { cursor: pointer; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.15s; }
+        .carrera-item:hover { background: #f1f5f9; }
+        .carrera-item.active { background: #dbeafe; border-left: 4px solid #3b82f6; }
+    </style>
+</head>
+<body>
+
+    <div id="modal-carrera" class="modal">
+        <div class="modal-content fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-carrera-titulo" class="text-xl font-bold text-slate-800">Nueva Carrera</h2>
+                <button onclick="cerrarModalCarrera()" class="text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="form-carrera" onsubmit="guardarCarrera(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Nombre de la carrera</label>
+                        <input type="text" id="nombre-carrera" required
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="btn-primary flex-1">
+                            <i class="fas fa-save mr-2"></i> Guardar
+                        </button>
+                        <button type="button" onclick="cerrarModalCarrera()" class="btn-secondary">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-grupo" class="modal">
+        <div class="modal-content fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-grupo-titulo" class="text-xl font-bold text-slate-800">Nuevo Grupo Académico</h2>
+                <button onclick="cerrarModalGrupo()" class="text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="form-grupo" onsubmit="guardarGrupo(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Carrera</label>
+                        <input type="text" id="grupo-carrera-nombre" readonly
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        <input type="hidden" id="grupo-carrera-id" value="">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Cuatrimestre</label>
+                        <select id="grupo-cuatrimestre" required
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="">Selecciona</option>
+                            <option value="1">1° Cuatrimestre</option>
+                            <option value="2">2° Cuatrimestre</option>
+                            <option value="3">3° Cuatrimestre</option>
+                            <option value="4">4° Cuatrimestre</option>
+                            <option value="5">5° Cuatrimestre</option>
+                            <option value="6">6° Cuatrimestre</option>
+                            <option value="7">7° Cuatrimestre</option>
+                            <option value="8">8° Cuatrimestre</option>
+                            <option value="9">9° Cuatrimestre</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Periodo</label>
+                        <input type="text" id="grupo-periodo" placeholder="ej: 2026-1" required
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="btn-primary flex-1">
+                            <i class="fas fa-save mr-2"></i> Guardar
+                        </button>
+                        <button type="button" onclick="cerrarModalGrupo()" class="btn-secondary">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                    <i class="fas fa-graduation-cap text-purple-500"></i> Carreras y Grupos Académicos
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">Administra carreras y sus grupos por cuatrimestre</p>
+            </div>
+            <button onclick="abrirModalCarrera()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i> Nueva Carrera
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- CARRERAS -->
+            <div class="border rounded-xl p-4">
+                <h2 class="font-semibold text-lg mb-4 flex items-center justify-between">
+                    <span>Carreras</span>
+                    <span id="total-carreras" class="text-sm text-slate-400">0</span>
+                </h2>
+                <div id="lista-carreras" class="space-y-1">
+                    <p class="text-slate-400 text-sm">Cargando carreras...</p>
+                </div>
+            </div>
+
+            <!-- GRUPOS -->
+            <div class="border rounded-xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-semibold text-lg">Grupos Académicos</h2>
+                    <span id="total-grupos" class="text-sm text-slate-400">0</span>
+                </div>
+                <div id="lista-grupos" class="space-y-1 min-h-[100px]">
+                    <p class="text-slate-400 text-sm">Selecciona una carrera</p>
+                </div>
+                <button id="btn-nuevo-grupo" onclick="abrirModalGrupo()" class="mt-4 btn-success text-sm px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fas fa-plus mr-1"></i> Nuevo grupo
+                </button>
+            </div>
+        </div>
+    </div>
+<script>
+    // ============================================================
+    // VARIABLES GLOBALES (con comprobación para evitar redeclaración)
+    // ============================================================
+    if (typeof carreras === 'undefined') {
+        var carreras = [];
+    }
+    if (typeof grupos === 'undefined') {
+        var grupos = [];
+    }
+    if (typeof carreraSeleccionadaId === 'undefined') {
+        var carreraSeleccionadaId = null;
+    }
+
+    // ============================================================
+    // CARGAR CARRERAS
+    // ============================================================
+    async function cargarCarreras() {
+        try {
+            const response = await fetch('/api/admin/carreras');
+            if (!response.ok) throw new Error('Error al cargar carreras');
+            carreras = await response.json();
+            renderizarCarreras(carreras);
+            if (carreras.length > 0) {
+                const primera = carreras[0];
+                seleccionarCarrera(primera.id);
+            } else {
+                document.getElementById('lista-grupos').innerHTML = '<p class="text-slate-400 text-sm">No hay carreras creadas</p>';
+                document.getElementById('btn-nuevo-grupo').disabled = true;
+            }
+        } catch (error) {
+            document.getElementById('lista-carreras').innerHTML = `<p class="text-red-500 text-sm">Error: ${error.message}</p>`;
+        }
+    }
+
+    function renderizarCarreras(carreras) {
+        const contenedor = document.getElementById('lista-carreras');
+        if (carreras.length === 0) {
+            contenedor.innerHTML = '<p class="text-slate-400 text-sm">No hay carreras creadas</p>';
+            document.getElementById('total-carreras').textContent = '0';
+            return;
+        }
+        let html = '';
+        carreras.forEach(c => {
+            html += `
+                <div class="carrera-item flex items-center justify-between" data-id="${c.id}" onclick="seleccionarCarrera(${c.id})">
+                    <span>${c.nombre}</span>
+                    <span class="text-xs text-slate-400">${c.creado_en ? new Date(c.creado_en).toLocaleDateString() : ''}</span>
+                </div>
+            `;
+        });
+        contenedor.innerHTML = html;
+        document.getElementById('total-carreras').textContent = carreras.length;
+    }
+
+    // ============================================================
+    // SELECCIONAR CARRERA
+    // ============================================================
+    async function seleccionarCarrera(id) {
+        document.querySelectorAll('.carrera-item').forEach(el => {
+            el.classList.remove('active');
+            if (parseInt(el.dataset.id) === id) {
+                el.classList.add('active');
+            }
+        });
+        carreraSeleccionadaId = id;
+        document.getElementById('btn-nuevo-grupo').disabled = false;
+        await cargarGrupos(id);
+    }
+
+    // ============================================================
+    // CARGAR GRUPOS
+    // ============================================================
+    async function cargarGrupos(carreraId) {
+        try {
+            const response = await fetch(`/api/admin/grupos/${carreraId}`);
+            if (!response.ok) throw new Error('Error al cargar grupos');
+            grupos = await response.json();
+            renderizarGrupos(grupos);
+        } catch (error) {
+            document.getElementById('lista-grupos').innerHTML = `<p class="text-red-500 text-sm">Error: ${error.message}</p>`;
+        }
+    }
+
+    function renderizarGrupos(grupos) {
+        const contenedor = document.getElementById('lista-grupos');
+        if (grupos.length === 0) {
+            contenedor.innerHTML = '<p class="text-slate-400 text-sm">Esta carrera no tiene grupos</p>';
+            document.getElementById('total-grupos').textContent = '0';
+            return;
+        }
+        let html = '';
+        grupos.forEach(g => {
+            html += `
+                <div class="flex items-center justify-between bg-slate-50 p-2 rounded-lg">
+                    <div>
+                        <span class="font-medium">${g.nombre_grupo}</span>
+                        <span class="text-xs text-slate-400 ml-2">${g.periodo}</span>
+                    </div>
+                    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">${g.cuatrimestre}°</span>
+                </div>
+            `;
+        });
+        contenedor.innerHTML = html;
+        document.getElementById('total-grupos').textContent = grupos.length;
+    }
+
+    // ============================================================
+    // MODAL CARRERA
+    // ============================================================
+    function abrirModalCarrera() {
+        document.getElementById('modal-carrera').classList.add('open');
+        document.getElementById('nombre-carrera').value = '';
+        document.getElementById('modal-carrera-titulo').textContent = 'Nueva Carrera';
+    }
+
+    function cerrarModalCarrera() {
+        document.getElementById('modal-carrera').classList.remove('open');
+    }
+
+    async function guardarCarrera(e) {
+        e.preventDefault();
+        const nombre = document.getElementById('nombre-carrera').value.trim();
+        if (!nombre) {
+            alert('Ingresa el nombre de la carrera');
+            return;
+        }
+        try {
+            const response = await fetch('/api/admin/carrera?nombre=' + encodeURIComponent(nombre), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert('❌ Error: ' + data.detail);
+                return;
+            }
+            alert('✅ ' + data.message);
+            cerrarModalCarrera();
+            await cargarCarreras();
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    // ============================================================
+    // MODAL GRUPO
+    // ============================================================
+    function abrirModalGrupo() {
+        if (!carreraSeleccionadaId) {
+            alert('Selecciona una carrera primero');
+            return;
+        }
+        const carrera = carreras.find(c => c.id === carreraSeleccionadaId);
+        if (!carrera) return;
+        document.getElementById('grupo-carrera-id').value = carreraSeleccionadaId;
+        document.getElementById('grupo-carrera-nombre').value = carrera.nombre;
+        document.getElementById('grupo-cuatrimestre').value = '';
+        document.getElementById('grupo-periodo').value = '';
+        document.getElementById('modal-grupo').classList.add('open');
+    }
+
+    function cerrarModalGrupo() {
+        document.getElementById('modal-grupo').classList.remove('open');
+    }
+
+    async function guardarGrupo(e) {
+        e.preventDefault();
+        const carrera_id = parseInt(document.getElementById('grupo-carrera-id').value);
+        const cuatrimestre = parseInt(document.getElementById('grupo-cuatrimestre').value);
+        const periodo = document.getElementById('grupo-periodo').value.trim();
+
+        if (!carrera_id || !cuatrimestre || !periodo) {
+            alert('Completa todos los campos');
+            return;
+        }
+
+        const body = { carrera_id, cuatrimestre, periodo };
+
+        try {
+            const response = await fetch('/api/admin/grupo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert('❌ Error: ' + data.detail);
+                return;
+            }
+            alert('✅ ' + data.message);
+            cerrarModalGrupo();
+            await cargarGrupos(carreraSeleccionadaId);
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    // ============================================================
+    // INICIALIZAR
+    // ============================================================
+    cargarCarreras();
+</script>
+</body>
+</html>

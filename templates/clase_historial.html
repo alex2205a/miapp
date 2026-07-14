@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Clase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .badge-presente {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        .badge-ausente {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .scrollbar-thin::-webkit-scrollbar {
+            width: 4px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 20px;
+        }
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 20px;
+        }
+        .btn-corregir {
+            background: #f59e0b;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-corregir:hover {
+            background: #d97706;
+            transform: scale(1.05);
+        }
+        .btn-corregir:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans antialiased flex items-center justify-center min-h-screen p-4 md:p-8">
+
+    <div class="w-full max-w-3xl mx-auto">
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/70 border border-slate-200/60 overflow-hidden">
+            
+            <!-- HEADER -->
+            <div class="bg-gradient-to-r from-slate-800 to-slate-700 px-6 py-5 flex items-center justify-between flex-wrap gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-blue-500/20 p-2 rounded-full">
+                        <i class="fas fa-history text-blue-400 text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 id="titulo-clase" class="text-xl font-semibold text-white tracking-tight">
+                            <span>Detalle de Clase</span>
+                        </h1>
+                        <p class="text-slate-300 text-sm flex items-center gap-2 mt-0.5">
+                            <i class="fas fa-calendar-alt text-blue-400"></i>
+                            <span id="fecha-clase">Cargando...</span>
+                        </p>
+                    </div>
+                </div>
+                <a href="/panel-maestro" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+
+            <!-- CUERPO -->
+            <div class="p-5 md:p-6">
+                <div id="mensaje-info" class="text-sm text-gray-500 mb-3"></div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-medium text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fas fa-list-ul text-slate-400"></i>
+                        Lista de alumnos
+                    </h2>
+                    <span class="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full" id="total-alumnos">0</span>
+                </div>
+
+                <div class="max-h-96 overflow-y-auto scrollbar-thin pr-1 -mr-1">
+                    <ul id="lista-alumnos" class="divide-y divide-slate-100">
+                        <!-- Cargado por JavaScript -->
+                    </ul>
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-slate-100 flex justify-between items-center text-sm text-slate-500">
+                    <div class="flex items-center gap-3">
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
+                            <span>Presente</span>
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-red-400 inline-block"></span>
+                            <span>Ausente</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1 bg-slate-50 px-3 py-1 rounded-full">
+                        <i class="fas fa-clock text-slate-400 text-xs"></i>
+                        <span class="text-xs font-mono text-slate-400" id="hora-actual"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sesionId = window.location.pathname.split('/').pop();
+        let esSesionHoy = false;  // 🔥 Variable global para saber si es hoy
+
+        // Actualizar hora
+        function actualizarHora() {
+            const ahora = new Date();
+            document.getElementById('hora-actual').textContent = ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+        actualizarHora();
+        setInterval(actualizarHora, 1000);
+
+        // ============================================
+        // ===== FUNCIÓN: MARCAR MANUAL (HISTORIAL) =====
+        // ============================================
+        async function marcarManualHistorial(alumnoId) {
+            if (!confirm('⚠️ ¿Seguro que quieres marcar a este alumno como presente?')) return;
+
+            try {
+                const response = await fetch('/api/asistencia/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        alumno_id: alumnoId,
+                        sesion_id: parseInt(sesionId)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert('❌ Error: ' + data.detail);
+                    return;
+                }
+
+                alert('✅ Asistencia registrada correctamente');
+                cargarDetalle(); // Recargar
+
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // ===== FUNCIÓN: CARGAR DETALLE =====
+        // ============================================
+        async function cargarDetalle() {
+            try {
+                // 🔥 PASO 1: Obtener información de la sesión
+                const infoRes = await fetch(`/api/sesion/info/${sesionId}`);
+                let fechaSesion = 'Fecha no disponible';
+                let esHoy = false;
+                
+                if (infoRes.ok) {
+                    const info = await infoRes.json();
+                    if (info.fecha) {
+                        const fecha = new Date(info.fecha + 'T00:00:00');
+                        const hoy = new Date();
+                        esHoy = fecha.toDateString() === hoy.toDateString();
+                        esSesionHoy = esHoy;  // Guardar globalmente
+                        
+                        fechaSesion = fecha.toLocaleDateString('es-ES', { 
+                            weekday: 'long', 
+                            year: 'numeric', 
+                            month: 'long', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                    }
+                }
+
+                // 🔥 PASO 2: Obtener la lista de alumnos
+                const res = await fetch(`/api/sesion/detalle/${sesionId}`);
+                if (!res.ok) throw new Error(`Error ${res.status}`);
+                
+                const alumnos = await res.json();
+
+                if (!Array.isArray(alumnos)) throw new Error('Datos inválidos');
+
+                const presentes = alumnos.filter(a => a.estado === 'presente').length;
+                const total = alumnos.length;
+
+                // 🔥 Mostrar fecha
+                document.getElementById('fecha-clase').textContent = fechaSesion;
+
+                // 🔥 Mostrar mensaje informativo
+                const mensajeInfo = document.getElementById('mensaje-info');
+                if (!esHoy) {
+                    mensajeInfo.innerHTML = '⚠️ <span class="text-red-500 font-semibold">Esta clase es de días pasados. No se pueden modificar asistencias.</span>';
+                } else {
+                    mensajeInfo.innerHTML = '✅ <span class="text-green-500 font-semibold">Puedes corregir asistencias de esta clase (es de hoy).</span>';
+                }
+
+                // 🔥 Renderizar alumnos
+                const html = alumnos.map((alumno) => {
+                    const esPresente = alumno.estado === 'presente';
+                    const badgeClass = esPresente ? 'badge-presente' : 'badge-ausente';
+                    const icono = esPresente ? 'fa-check-circle' : 'fa-times-circle';
+                    const textoEstado = esPresente ? 'Presente' : 'Ausente';
+                    
+                    let horaRegistro = '';
+                    if (alumno.hora_registro) {
+                        const fechaReg = new Date(alumno.hora_registro);
+                        horaRegistro = fechaReg.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    // 🔥 Botón "Corregir" (solo si es de hoy y el alumno está ausente)
+                    let botonCorregir = '';
+                    if (esHoy && !esPresente) {
+                        botonCorregir = `
+                            <button onclick="marcarManualHistorial('${alumno.alumno_id}')" 
+                                    class="btn-corregir">
+                                <i class="fas fa-edit"></i> Corregir
+                            </button>
+                        `;
+                    } else if (!esHoy && !esPresente) {
+                        botonCorregir = `
+                            <span class="text-xs text-gray-400">🔒 No editable</span>
+                        `;
+                    }
+                    
+                    return `
+                        <li class="py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 px-2 rounded-lg">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-medium flex-shrink-0">
+                                    ${alumno.nombre ? alumno.nombre.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <span class="font-medium text-slate-700 truncate">${alumno.nombre || 'Sin nombre'}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${horaRegistro ? `<span class="text-xs text-slate-400">${horaRegistro}</span>` : ''}
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${badgeClass}">
+                                    <i class="fas ${icono} text-xs"></i>
+                                    ${textoEstado}
+                                </span>
+                                ${botonCorregir}
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+
+                document.getElementById('lista-alumnos').innerHTML = html || '<li class="py-8 text-center text-slate-400">No hay alumnos</li>';
+                document.getElementById('total-alumnos').textContent = `${total}`;
+
+                // Actualizar título
+                document.getElementById('titulo-clase').innerHTML = `
+                    <span>Detalle de Clase</span>
+                    <span class="inline-flex items-center gap-1.5 bg-blue-500/30 text-blue-200 text-xs font-medium px-3 py-1 rounded-full border border-blue-400/30">
+                        <i class="fas fa-check-circle"></i>
+                        ${presentes}/${total} presentes
+                    </span>
+                `;
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('lista-alumnos').innerHTML = `
+                    <li class="py-8 text-center text-red-400">
+                        <i class="fas fa-exclamation-triangle text-2xl block mb-2"></i>
+                        Error al cargar el detalle: ${error.message}
+                        <button onclick="cargarDetalle()" class="mt-2 text-xs bg-red-100 text-red-600 px-4 py-1.5 rounded-full">
+                            Reintentar
+                        </button>
+                    </li>
+                `;
+            }
+        }
+
+        // Iniciar
+        cargarDetalle();
+
+        // Agregar estilos de badges
+        const style = document.createElement('style');
+        style.textContent = `
+            .badge-presente {
+                background: #dcfce7;
+                color: #166534;
+                border: 1px solid #86efac;
+            }
+            .badge-ausente {
+                background: #fee2e2;
+                color: #991b1b;
+                border: 1px solid #fca5a5;
+            }
+            .scrollbar-thin::-webkit-scrollbar {
+                width: 4px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 20px;
+            }
+            .scrollbar-thin::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 20px;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

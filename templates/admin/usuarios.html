@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        .btn-primary { background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-secondary { background: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .table-container { overflow-x: auto; }
+        .badge-rol { padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+        .badge-admin { background: #e9d5ff; color: #6b21a8; }
+        .badge-maestro { background: #bfdbfe; color: #1e40af; }
+        .badge-alumno { background: #d1fae5; color: #065f46; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden-field { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="modal-usuario" class="modal">
+        <div class="modal-content fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-titulo" class="text-xl font-bold text-slate-800">Nuevo Usuario</h2>
+                <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="form-usuario" onsubmit="guardarUsuario(event)">
+                <input type="hidden" id="usuario-id" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Matrícula</label>
+                        <input type="text" id="matricula" required
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Nombre completo</label>
+                        <input type="text" id="nombre" required
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Rol</label>
+                        <select id="rol" required onchange="toggleGrupoField()"
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="alumno">Alumno</option>
+                            <option value="maestro">Maestro</option>
+                            <option value="administrador">Administrador</option>
+                        </select>
+                    </div>
+                    <div id="grupo-field" class="hidden-field">
+                        <label class="block text-sm font-medium text-slate-700">Grupo académico</label>
+                        <select id="grupo_id" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="">Sin grupo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Correo electrónico</label>
+                        <input type="email" id="email"
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Contraseña</label>
+                        <input type="password" id="password"
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="btn-primary flex-1">
+                            <i class="fas fa-save mr-2"></i> Guardar
+                        </button>
+                        <button type="button" onclick="cerrarModal()" class="btn-secondary">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                    <i class="fas fa-users text-purple-500"></i> Gestión de Usuarios
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">Administra todos los usuarios del sistema</p>
+            </div>
+            <button onclick="abrirModal()" class="btn-primary">
+                <i class="fas fa-user-plus mr-2"></i> Nuevo Usuario
+            </button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 mb-4">
+            <div class="flex-1 relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="buscar-usuario" placeholder="Buscar por nombre o matrícula..."
+                       class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            </div>
+            <select id="filtro-rol"
+                    class="px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                <option value="todos">Todos los roles</option>
+                <option value="alumno">Alumnos</option>
+                <option value="maestro">Maestros</option>
+                <option value="administrador">Administradores</option>
+            </select>
+        </div>
+
+        <div class="table-container">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Matrícula</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Nombre</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Rol</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Device ID</th>
+                        <th class="px-4 py-3 text-center font-semibold text-slate-600">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-usuarios">
+                    <tr><td colspan="5" class="text-center py-8 text-slate-400">Cargando usuarios...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            let usuariosData = [];
+
+            // ============================================================
+            // CARGAR GRUPOS PARA EL SELECT
+            // ============================================================
+            async function cargarGruposEnSelect() {
+                try {
+                    const response = await fetch('/api/admin/grupos-todos');
+                    const grupos = await response.json();
+                    const select = document.getElementById('grupo_id');
+                    select.innerHTML = '<option value="">Sin grupo</option>';
+                    grupos.forEach(g => {
+                        select.innerHTML += `<option value="${g.id}">${g.nombre_grupo}</option>`;
+                    });
+                    console.log('✅ Grupos cargados:', grupos.length);
+                } catch (error) {
+                    console.error('Error al cargar grupos:', error);
+                }
+            }
+
+            // ============================================================
+            // MOSTRAR/OCULTAR CAMPO DE GRUPO SEGÚN ROL
+            // ============================================================
+            function toggleGrupoField() {
+                const rol = document.getElementById('rol').value;
+                const grupoField = document.getElementById('grupo-field');
+                if (rol === 'alumno') {
+                    grupoField.style.display = 'block';
+                } else {
+                    grupoField.style.display = 'none';
+                    document.getElementById('grupo_id').value = '';
+                }
+            }
+
+            // ============================================================
+            // CARGAR USUARIOS (LISTA)
+            // ============================================================
+            async function cargarUsuarios() {
+                const buscarInput = document.getElementById('buscar-usuario');
+                const filtroSelect = document.getElementById('filtro-rol');
+                const buscar = buscarInput ? buscarInput.value : '';
+                const rol = filtroSelect ? filtroSelect.value : 'todos';
+                
+                let url = '/api/admin/usuarios';
+                const params = new URLSearchParams();
+                if (buscar) params.append('busqueda', buscar);
+                if (rol !== 'todos') params.append('rol', rol);
+                if (params.toString()) url += '?' + params.toString();
+
+                try {
+                    const response = await fetch(url);
+                    usuariosData = await response.json();
+                    renderizarTabla(usuariosData);
+                } catch (error) {
+                    const tbody = document.getElementById('tabla-usuarios');
+                    if (tbody) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-500">Error al cargar usuarios</td></tr>`;
+                    }
+                }
+            }
+
+            function renderizarTabla(usuarios) {
+                const tbody = document.getElementById('tabla-usuarios');
+                if (!tbody) return;
+                
+                if (usuarios.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">No hay usuarios registrados</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = usuarios.map(u => {
+                    const badgeClass = u.rol === 'administrador' ? 'badge-admin' : u.rol === 'maestro' ? 'badge-maestro' : 'badge-alumno';
+                    const deviceStatus = u.device_id ? `<span class="text-green-600 text-xs"><i class="fas fa-check-circle"></i> Vinculado</span>` 
+                                                      : `<span class="text-slate-400 text-xs"><i class="fas fa-circle"></i> Sin vincular</span>`;
+                    return `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                            <td class="px-4 py-3 font-medium text-slate-700">${u.matricula}</td>
+                            <td class="px-4 py-3 text-slate-700">${u.nombre}</td>
+                            <td class="px-4 py-3"><span class="badge-rol ${badgeClass}">${u.rol}</span></td>
+                            <td class="px-4 py-3 text-sm">${deviceStatus}</td>
+                            <td class="px-4 py-3 text-center">
+                                <button onclick="window.editarUsuario('${u.id}')" class="text-blue-500 hover:text-blue-700 mr-2" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                ${u.device_id ? `<button onclick="window.resetearDevice('${u.id}')" class="text-yellow-500 hover:text-yellow-700 mr-2" title="Resetear device">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>` : ''}
+                                <button onclick="window.eliminarUsuario('${u.id}')" class="text-red-500 hover:text-red-700" title="Eliminar">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // ============================================================
+            // MODAL Y CRUD
+            // ============================================================
+            window.abrirModal = function(usuario = null) {
+                const modal = document.getElementById('modal-usuario');
+                if (!modal) return;
+                modal.classList.add('open');
+
+                const emailInput = document.getElementById('email');
+                const passwordInput = document.getElementById('password');
+                const grupoField = document.getElementById('grupo-field');
+                const selectGrupo = document.getElementById('grupo_id');
+
+                if (usuario) {
+                    document.getElementById('modal-titulo').textContent = 'Editar Usuario';
+                    document.getElementById('usuario-id').value = usuario.id;
+                    document.getElementById('matricula').value = usuario.matricula;
+                    document.getElementById('nombre').value = usuario.nombre;
+                    document.getElementById('rol').value = usuario.rol;
+                    
+                    emailInput.value = '';
+                    emailInput.required = false;
+                    passwordInput.value = '';
+                    passwordInput.required = false;
+                    
+                    // Mostrar campo de grupo si es alumno
+                    if (usuario.rol === 'alumno') {
+                        grupoField.style.display = 'block';
+                        // Cargar grupos y luego seleccionar el actual
+                        cargarGruposEnSelect().then(() => {
+                            // 🔥 DEPURACIÓN: Ver qué valor tiene usuario.grupo_id
+                            console.log('👤 Grupo del usuario:', usuario.grupo_id);
+                            console.log('🔽 Opciones del select:', selectGrupo.innerHTML);
+                            // Asignar el valor
+                            if (usuario.grupo_id) {
+                                selectGrupo.value = usuario.grupo_id;
+                            } else {
+                                selectGrupo.value = '';
+                            }
+                            console.log('✅ Select ahora tiene valor:', selectGrupo.value);
+                        });
+                    } else {
+                        grupoField.style.display = 'none';
+                        selectGrupo.value = '';
+                    }
+                } else {
+                    document.getElementById('modal-titulo').textContent = 'Nuevo Usuario';
+                    document.getElementById('usuario-id').value = '';
+                    document.getElementById('matricula').value = '';
+                    document.getElementById('nombre').value = '';
+                    document.getElementById('rol').value = 'alumno';
+                    emailInput.required = true;
+                    passwordInput.required = true;
+                    emailInput.value = '';
+                    passwordInput.value = '';
+                    toggleGrupoField();
+                    cargarGruposEnSelect();
+                }
+            };
+
+            window.cerrarModal = function() {
+                const modal = document.getElementById('modal-usuario');
+                if (modal) modal.classList.remove('open');
+            };
+
+            window.editarUsuario = function(id) {
+                const usuario = usuariosData.find(u => u.id === id);
+                if (usuario) window.abrirModal(usuario);
+            };
+
+            window.guardarUsuario = async function(e) {
+                e.preventDefault();
+                const id = document.getElementById('usuario-id').value;
+                const matricula = document.getElementById('matricula').value.trim();
+                const nombre = document.getElementById('nombre').value.trim();
+                const rol = document.getElementById('rol').value;
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value.trim();
+                const grupo_id = rol === 'alumno' ? document.getElementById('grupo_id').value : null;
+                const grupoIdFinal = grupo_id ? parseInt(grupo_id) : null;
+
+                const url = id ? `/api/admin/usuario/${id}` : '/api/admin/usuario';
+                const method = id ? 'PUT' : 'POST';
+                const body = id 
+                    ? { nombre, matricula, rol, grupo_id: grupoIdFinal } 
+                    : { matricula, nombre, rol, email, password, grupo_id: grupoIdFinal };
+
+                try {
+                    const response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    const data = await response.json();
+                    if (!response.ok) {
+                        alert('❌ Error: ' + (data.detail || JSON.stringify(data)));
+                        return;
+                    }
+
+                    alert('✅ ' + data.message);
+                    window.cerrarModal();
+                    cargarUsuarios();
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            };
+
+            window.eliminarUsuario = async function(id) {
+                if (!confirm('¿Seguro que quieres eliminar este usuario?')) return;
+                try {
+                    const response = await fetch(`/api/admin/usuario/${id}`, { method: 'DELETE' });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        alert('❌ Error: ' + data.detail);
+                        return;
+                    }
+                    alert('✅ ' + data.message);
+                    cargarUsuarios();
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            };
+
+            window.resetearDevice = async function(id) {
+                if (!confirm('¿Seguro que quieres resetear el device ID?')) return;
+                try {
+                    const response = await fetch(`/api/admin/usuario/${id}/reset-device`, { method: 'POST' });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        alert('❌ Error: ' + data.detail);
+                        return;
+                    }
+                    alert('✅ ' + data.message);
+                    cargarUsuarios();
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            };
+
+            // ============================================================
+            // EVENT LISTENERS
+            // ============================================================
+            const buscarInput = document.getElementById('buscar-usuario');
+            if (buscarInput) buscarInput.addEventListener('input', cargarUsuarios);
+            const filtroSelect = document.getElementById('filtro-rol');
+            if (filtroSelect) filtroSelect.addEventListener('change', cargarUsuarios);
+            const modal = document.getElementById('modal-usuario');
+            if (modal) modal.addEventListener('click', function(e) {
+                if (e.target === this) window.cerrarModal();
+            });
+
+            // ============================================================
+            // INICIALIZAR
+            // ============================================================
+            cargarUsuarios();
+            cargarGruposEnSelect();
+            toggleGrupoField();
+        })();
+    </script>
+</body>
+</html>

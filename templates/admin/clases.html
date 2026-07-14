@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clases</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .modal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.open { display: flex; }
+        .modal-content { background: white; border-radius: 1rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 2rem; }
+        .btn-primary { background: #3b82f6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-danger { background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-success { background: #22c55e; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-success:hover { background: #16a34a; }
+        .btn-secondary { background: #e5e7eb; color: #374151; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .badge-dia { padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; background: #dbeafe; color: #1e40af; }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="modal-clase" class="modal">
+        <div class="modal-content fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-titulo" class="text-xl font-bold text-slate-800">Nueva Clase</h2>
+                <button onclick="cerrarModalClase()" class="text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="form-clase" onsubmit="guardarClase(event)">
+                <input type="hidden" id="clase-id" value="">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Materia</label>
+                        <input type="text" id="nombre_materia" required
+                               class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Maestro</label>
+                        <select id="maestro_id" required
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Zona WiFi</label>
+                        <select id="zona_id" required
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Grupo académico</label>
+                        <select id="grupo_id" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="">Sin grupo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Día de la semana</label>
+                        <select id="dia_semana" required
+                                class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="lunes">Lunes</option>
+                            <option value="martes">Martes</option>
+                            <option value="miércoles">Miércoles</option>
+                            <option value="jueves">Jueves</option>
+                            <option value="viernes">Viernes</option>
+                            <option value="sábado">Sábado</option>
+                            <option value="domingo">Domingo</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-slate-700">Hora inicio</label>
+                            <input type="time" id="horario_inicio" required
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-sm font-medium text-slate-700">Hora fin</label>
+                            <input type="time" id="horario_fin" required
+                                   class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="submit" class="btn-primary flex-1">
+                            <i class="fas fa-save mr-2"></i> Guardar
+                        </button>
+                        <button type="button" onclick="cerrarModalClase()" class="btn-secondary">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-inscripcion" class="modal">
+        <div class="modal-content fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 id="modal-inscripcion-titulo" class="text-xl font-bold text-slate-800">Inscribir Alumnos</h2>
+                <button onclick="cerrarModalInscripcion()" class="text-slate-400 hover:text-slate-600 text-xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="modal-inscripcion-contenido">
+                <!-- Cargado dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                    <i class="fas fa-chalkboard text-blue-500"></i> Gestión de Clases
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">Administra todas las clases del sistema</p>
+            </div>
+            <button onclick="abrirModalClase()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i> Nueva Clase
+            </button>
+        </div>
+
+        <div class="table-container overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Materia</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Maestro</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Día</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Horario</th>
+                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Zona WiFi</th>
+                        <th class="px-4 py-3 text-center font-semibold text-slate-600">Alumnos</th>
+                        <th class="px-4 py-3 text-center font-semibold text-slate-600">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-clases">
+                    <tr><td colspan="7" class="text-center py-8 text-slate-400">Cargando clases...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+    // 🔥 Variables globales
+    if (typeof clasesData === 'undefined') {
+        var clasesData = [];
+    }
+    if (typeof claseSeleccionada === 'undefined') {
+        var claseSeleccionada = null;
+    }
+
+    // ============================================================
+    // CARGAR CLASES
+    // ============================================================
+    async function cargarClasesPagina() {
+        try {
+            const response = await fetch('/api/admin/clases');
+            clasesData = await response.json();
+            console.log("Clases recibidas:", clasesData);
+            renderizarTabla(clasesData);
+        } catch(error) {
+            document.getElementById('tabla-clases').innerHTML = `
+                <tr><td colspan="7" class="text-center py-8 text-red-500">Error al cargar clases</td></tr>
+            `;
+        }
+    }
+
+    function renderizarTabla(clases) {
+        const tbody = document.getElementById('tabla-clases');
+        if (!tbody) return;
+        if (clases.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">No hay clases registradas</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = clases.map(c => `
+            <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                <td class="px-4 py-3 font-medium text-slate-700">${c.materia}</td>
+                <td class="px-4 py-3 text-slate-700">${c.maestro}</td>
+                <td class="px-4 py-3"><span class="badge-dia">${c.dia}</span></td>
+                <td class="px-4 py-3 text-slate-600">${c.hora_inicio} - ${c.hora_fin}</td>
+                <td class="px-4 py-3 text-slate-600">${c.zona}</td>
+                <td class="px-4 py-3 text-center font-medium">${c.total_alumnos}</td>
+                <td class="px-4 py-3 text-center">
+                    <button onclick="abrirInscripcion(${c.id})" class="text-green-500 hover:text-green-700 mr-2" title="Inscribir alumnos">
+                        <i class="fas fa-user-plus"></i>
+                    </button>
+                    <button onclick="editarClase(${c.id})" class="text-blue-500 hover:text-blue-700 mr-2" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="eliminarClase(${c.id})" class="text-red-500 hover:text-red-700" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // ===== CLASES =====
+    async function abrirModalClase(clase = null) {
+    const modal = document.getElementById('modal-clase');
+    modal.classList.add('open');
+
+    if (clase) {
+        console.log("📝 Editando clase:", clase); // Depuración
+
+        document.getElementById('modal-titulo').textContent = 'Editar Clase';
+        document.getElementById('clase-id').value = clase.id;
+        document.getElementById('nombre_materia').value = clase.materia;
+        document.getElementById('dia_semana').value = clase.dia;
+        document.getElementById('horario_inicio').value = clase.hora_inicio;
+        document.getElementById('horario_fin').value = clase.hora_fin;
+
+        // 🔥 Cargar selectores y luego asignar valores seleccionados
+        await cargarSelectores(clase.maestro_id, clase.zona_id);
+        await cargarGruposSelect();
+
+        // Asignar valores después de cargar las opciones
+        const selectMaestro = document.getElementById('maestro_id');
+        const selectZona = document.getElementById('zona_id');
+        const selectGrupo = document.getElementById('grupo_id');
+
+        if (clase.maestro_id) selectMaestro.value = clase.maestro_id;
+        if (clase.zona_id) selectZona.value = clase.zona_id;
+        if (clase.grupo_id) selectGrupo.value = clase.grupo_id;
+        else selectGrupo.value = '';
+
+        console.log("✅ Selectores actualizados:", {
+            maestro: selectMaestro.value,
+            zona: selectZona.value,
+            grupo: selectGrupo.value
+        });
+
+    } else {
+        // Nueva clase: resetear todo
+        document.getElementById('modal-titulo').textContent = 'Nueva Clase';
+        document.getElementById('clase-id').value = '';
+        document.getElementById('nombre_materia').value = '';
+        document.getElementById('dia_semana').value = 'lunes';
+        document.getElementById('horario_inicio').value = '';
+        document.getElementById('horario_fin').value = '';
+
+        await cargarSelectores();
+        await cargarGruposSelect();
+        document.getElementById('grupo_id').value = '';
+    }
+}
+
+    async function cargarSelectores(maestroSeleccionado = '', zonaSeleccionada = '') {
+    const respMaestros = await fetch('/api/admin/maestros');
+    const maestros = await respMaestros.json();
+    const selectMaestro = document.getElementById('maestro_id');
+    selectMaestro.innerHTML = maestros.map(m =>
+        `<option value="${m.id}" ${m.id === maestroSeleccionado ? 'selected' : ''}>${m.nombre} (${m.matricula})</option>`
+    ).join('');
+
+    const respZonas = await fetch('/api/admin/zonas');
+    const zonas = await respZonas.json();
+    const selectZona = document.getElementById('zona_id');
+    selectZona.innerHTML = zonas.map(z =>
+        `<option value="${z.id}" ${z.id === zonaSeleccionada ? 'selected' : ''}>${z.nombre}</option>`
+    ).join('');
+}
+    async function cargarGruposSelect() {
+        try {
+            const response = await fetch('/api/admin/grupos-todos');
+            const grupos = await response.json();
+            const select = document.getElementById('grupo_id');
+            select.innerHTML = '<option value="">Sin grupo</option>';
+            grupos.forEach(g => {
+                select.innerHTML += `<option value="${g.id}">${g.nombre_grupo}</option>`;
+            });
+        } catch (error) {
+            console.error('Error al cargar grupos:', error);
+        }
+    }
+
+    function cerrarModalClase() {
+        document.getElementById('modal-clase').classList.remove('open');
+    }
+
+    async function guardarClase(e) {
+        e.preventDefault();
+        const id = document.getElementById('clase-id').value;
+        const data = {
+            nombre_materia: document.getElementById('nombre_materia').value.trim(),
+            maestro_id: document.getElementById('maestro_id').value,
+            zona_id: parseInt(document.getElementById('zona_id').value) || null,
+            dia_semana: document.getElementById('dia_semana').value,
+            horario_inicio: document.getElementById('horario_inicio').value,
+            horario_fin: document.getElementById('horario_fin').value,
+            grupo_id: parseInt(document.getElementById('grupo_id').value) || null
+        };
+
+        const url = id ? `/api/admin/clase/${id}` : '/api/admin/clase';
+        const method = id ? 'PUT' : 'POST';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                alert('❌ Error: ' + result.detail);
+                return;
+            }
+            alert('✅ ' + result.message);
+            cerrarModalClase();
+            cargarClasesPagina();
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    async function editarClase(id) {
+        const clase = clasesData.find(c => c.id === id);
+        if (clase) await abrirModalClase(clase);
+    }
+
+    async function eliminarClase(id) {
+        if (!confirm('¿Seguro que quieres eliminar esta clase? Los alumnos inscritos se perderán.')) return;
+        try {
+            const response = await fetch(`/api/admin/clase/${id}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (!response.ok) {
+                alert('❌ Error: ' + result.detail);
+                return;
+            }
+            alert('✅ ' + result.message);
+            cargarClasesPagina();
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+
+    // ===== INSCRIPCIONES =====
+    // ===== INSCRIPCIONES POR GRUPO =====
+async function abrirInscripcion(claseId) {
+    claseSeleccionada = clasesData.find(c => c.id === claseId);
+    if (!claseSeleccionada) return;
+    document.getElementById('modal-inscripcion-titulo').textContent = `Inscribir Alumnos - ${claseSeleccionada.materia}`;
+    document.getElementById('modal-inscripcion').classList.add('open');
+    
+    const contenedor = document.getElementById('modal-inscripcion-contenido');
+    contenedor.innerHTML = `<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Cargando alumnos...</div>`;
+    
+    await cargarAlumnosGrupo(claseId);
+}
+
+async function cargarAlumnosGrupo(claseId) {
+    try {
+        const response = await fetch(`/api/admin/clase/${claseId}/alumnos-grupo`);
+        const data = await response.json();
+        const contenedor = document.getElementById('modal-inscripcion-contenido');
+        
+        if (!data.grupo_id) {
+            contenedor.innerHTML = `
+                <div class="text-yellow-500 p-4 text-center">
+                    <i class="fas fa-exclamation-triangle text-2xl"></i>
+                    <p class="mt-2">⚠️ Esta clase no tiene un grupo asignado.</p>
+                    <p class="text-sm text-slate-400">Asigna un grupo en la edición de la clase.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const alumnos = data.alumnos || [];
+        const inscritos = alumnos.filter(a => a.inscrito).length;
+        const total = alumnos.length;
+
+        let html = `
+            <div class="mb-4 flex flex-wrap justify-between items-center">
+                <div>
+                    <p><strong>Grupo:</strong> ${data.grupo_nombre}</p>
+                    <p class="text-sm text-slate-500">${inscritos} de ${total} alumnos inscritos</p>
+                </div>
+                <div class="flex gap-2 flex-wrap mt-2 sm:mt-0">
+                    <button onclick="inscribirTodosGrupo(${claseId})" class="btn-success text-sm px-4 py-2 rounded-lg">
+                        <i class="fas fa-user-plus mr-1"></i> Inscribir todos
+                    </button>
+                    <button onclick="desinscribirTodosGrupo(${claseId})" class="btn-danger text-sm px-4 py-2 rounded-lg">
+                        <i class="fas fa-user-minus mr-1"></i> Desinscribir todos
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto max-h-60 overflow-y-auto border rounded-lg">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 sticky top-0">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Alumno</th>
+                            <th class="px-3 py-2 text-left">Matrícula</th>
+                            <th class="px-3 py-2 text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        if (alumnos.length === 0) {
+            html += `<tr><td colspan="3" class="text-center py-4 text-slate-400">No hay alumnos en este grupo</td></tr>`;
+        } else {
+            alumnos.forEach(a => {
+                html += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                        <td class="px-3 py-2">${a.nombre}</td>
+                        <td class="px-3 py-2">${a.matricula}</td>
+                        <td class="px-3 py-2 text-center">
+                            ${a.inscrito 
+                                ? '<span class="text-green-600"><i class="fas fa-check-circle"></i> Inscrito</span>' 
+                                : '<span class="text-red-400"><i class="fas fa-times-circle"></i> No inscrito</span>'
+                            }
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        html += `</tbody></table></div>
+            <div class="mt-4 text-right">
+                <button onclick="cerrarModalInscripcion()" class="btn-secondary text-sm px-4 py-2 rounded-lg">
+                    Cerrar
+                </button>
+            </div>
+        `;
+        contenedor.innerHTML = html;
+    } catch (error) {
+        document.getElementById('modal-inscripcion-contenido').innerHTML = `
+            <div class="text-red-500 p-4 text-center">
+                <i class="fas fa-exclamation-triangle text-2xl"></i>
+                <p class="mt-2">Error al cargar alumnos: ${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+async function inscribirTodosGrupo(claseId) {
+    if (!confirm('¿Inscribir a TODOS los alumnos del grupo en esta clase?')) return;
+    try {
+        const response = await fetch(`/api/admin/clase/${claseId}/inscribir-grupo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            alert('❌ Error: ' + result.detail);
+            return;
+        }
+        alert('✅ ' + result.message);
+        await cargarAlumnosGrupo(claseId);
+        cargarClasesPagina(); // actualiza el contador de alumnos en la tabla
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+async function desinscribirTodosGrupo(claseId) {
+    if (!confirm('¿Desinscribir a TODOS los alumnos del grupo de esta clase?')) return;
+    try {
+        const response = await fetch(`/api/admin/clase/${claseId}/desinscribir-grupo`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            alert('❌ Error: ' + result.detail);
+            return;
+        }
+        alert('✅ ' + result.message);
+        await cargarAlumnosGrupo(claseId);
+        cargarClasesPagina();
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+function cerrarModalInscripcion() {
+    document.getElementById('modal-inscripcion').classList.remove('open');
+}
+
+    // ===== INICIALIZAR =====
+    cargarClasesPagina();
+    </script>
+</body>
+</html>
