@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import QueuePool
 
 # 🔥 AGREGAR ?sslmode=require al final
-DATABASE_URL = "postgresql://postgres:rXyK8PQ,KSb,+QZ@db.krtwieirxyfyarqklleo.supabase.co:5432/postgres?sslmode=require"
+DATABASE_URL = "postgresql://postgres:rXyK8PQ%2CKSb%2C%2BQZ@aws-1-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require"
 
 engine = create_engine(
     DATABASE_URL,
