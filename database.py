@@ -1,9 +1,14 @@
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import QueuePool
 
-# 🔥 AGREGAR ?sslmode=require al final
-DATABASE_URL = "postgresql://postgres:rXyK8PQ%2CKSb%2C%2BQZ@aws-1-us-west-2.pooler.supabase.com:6543/postgres?sslmode=require"
+# Esta línea busca la variable DATABASE_URL que configuramos en Render
+# Si no la encuentra, usa None para evitar errores silenciosos
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("La variable DATABASE_URL no está configurada en el entorno.")
 
 engine = create_engine(
     DATABASE_URL,
