@@ -1612,6 +1612,5 @@ def admin_clases(request: Request):
 def admin_carreras(request: Request):
     return templates.TemplateResponse( request, "admin/carreras.html")
 
-if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
