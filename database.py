@@ -16,9 +16,9 @@ engine = create_engine(
     pool_size=10,
     max_overflow=20,
     pool_timeout=30,
+    # ESTO ES LO QUE FALTA PARA EVITAR ERRORES DE POOLER:
     connect_args={
-        "sslmode": "require",
-        "connect_timeout": 10
+        "options": "-c project=krtwieirxyfyarqklleo"
     }
 )
 
