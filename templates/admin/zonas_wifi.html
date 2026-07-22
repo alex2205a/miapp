@@ -225,7 +225,6 @@
                 );
                 
                 if (bssid === null) {
-                    // Usuario canceló
                     return;
                 }
                 
@@ -246,36 +245,98 @@
             };
 
             // ============================================================
-            // 🔥 ESCANEAR BSSID (VERSIÓN MEJORADA PARA RENDER)
+            // 🔥 ESCANEAR BSSID - VERSIÓN MEJORADA (AUTOMÁTICA EN RENDER)
             // ============================================================
             window.escanearyRellenarBSSID = async function() {
                 const mensaje = document.getElementById('mensaje-bssid');
-                mensaje.innerHTML = '🔍 Escaneando red...';
+                mensaje.innerHTML = '🔍 Intentando obtener BSSID...';
                 mensaje.className = 'text-xs text-blue-500';
 
                 try {
+                    // 🔥 PASO 1: Intentar con la API de WiFi del navegador (más rápido)
+                    if ('wifi' in navigator) {
+                        mensaje.innerHTML = '📡 Escaneando redes WiFi disponibles...';
+                        
+                        try {
+                            // Intentar escanear redes
+                            const wifi = await navigator.wifi.scan();
+                            
+                            if (wifi.networks && wifi.networks.length > 0) {
+                                // Buscar la red con mejor señal (la más probable)
+                                const mejorRed = wifi.networks.reduce((mejor, actual) => {
+                                    return (actual.signalStrength > mejor.signalStrength) ? actual : mejor;
+                                }, wifi.networks[0]);
+                                
+                                if (mejorRed && mejorRed.bssid) {
+                                    document.getElementById('bssid_mac').value = mejorRed.bssid;
+                                    mensaje.innerHTML = `✅ BSSID detectado automáticamente: <strong>${mejorRed.bssid}</strong> (${mejorRed.ssid || 'Red'})`;
+                                    mensaje.className = 'text-xs text-green-600';
+                                    return;
+                                }
+                            }
+                        } catch (wifiError) {
+                            console.log('API WiFi no disponible o sin permisos:', wifiError);
+                        }
+                    }
+
+                    // 🔥 PASO 2: Intentar con geolocalización
+                    if ('geolocation' in navigator) {
+                        mensaje.innerHTML = '📍 Obteniendo ubicación para detectar red...';
+                        
+                        try {
+                            const position = await new Promise((resolve, reject) => {
+                                navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                    enableHighAccuracy: true,
+                                    timeout: 10000
+                                });
+                            });
+                            
+                            // Enviar coordenadas al servidor
+                            const response = await fetch('/api/admin/bssid-por-ubicacion', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    lat: position.coords.latitude,
+                                    lng: position.coords.longitude
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            if (data.success && data.bssid) {
+                                document.getElementById('bssid_mac').value = data.bssid;
+                                mensaje.innerHTML = `✅ BSSID detectado por ubicación: <strong>${data.bssid}</strong>`;
+                                mensaje.className = 'text-xs text-green-600';
+                                return;
+                            }
+                        } catch (geoError) {
+                            console.log('Geolocalización no disponible:', geoError);
+                        }
+                    }
+
+                    // 🔥 PASO 3: Intentar con el servidor (por si tiene BSSID)
+                    mensaje.innerHTML = '🖥️ Consultando al servidor...';
                     const response = await fetch('/api/admin/bssid-actual');
                     const data = await response.json();
                     
                     if (data.success && data.bssid) {
-                        // ✅ BSSID obtenido exitosamente
                         document.getElementById('bssid_mac').value = data.bssid;
-                        mensaje.innerHTML = `✅ BSSID obtenido automáticamente: <strong>${data.bssid}</strong>`;
+                        mensaje.innerHTML = `✅ BSSID obtenido del servidor: <strong>${data.bssid}</strong>`;
                         mensaje.className = 'text-xs text-green-600';
-                    } else if (data.manual) {
-                        // 🔥 En Render, mostrar mensaje y ofrecer ingresar manualmente
-                        mensaje.innerHTML = `
-                            ⚠️ <strong>No se puede escanear automáticamente en este entorno.</strong><br>
-                            <span class="text-slate-500">Haz clic en "Ingresar manual" para pegar el BSSID.</span>
-                        `;
-                        mensaje.className = 'text-xs text-yellow-600';
-                    } else {
-                        throw new Error(data.message || 'No se pudo obtener el BSSID');
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error:', error);
+
+                    // ❌ Si todo falla, mostrar mensaje con opción manual
                     mensaje.innerHTML = `
-                        ⚠️ ${error.message}<br>
+                        ⚠️ <strong>No se pudo obtener el BSSID automáticamente.</strong><br>
+                        <span class="text-slate-500">Haz clic en "Ingresar manual" para pegar el BSSID.</span>
+                        <br><span class="text-xs text-slate-400">💡 Asegúrate de estar conectado a una red WiFi y haber dado permisos.</span>
+                    `;
+                    mensaje.className = 'text-xs text-yellow-600';
+
+                } catch (error) {
+                    console.error('Error escaneando BSSID:', error);
+                    mensaje.innerHTML = `
+                        ⚠️ Error al escanear: ${error.message}<br>
                         <span class="text-slate-500">Haz clic en "Ingresar manual" para pegar el BSSID.</span>
                     `;
                     mensaje.className = 'text-xs text-yellow-600';
