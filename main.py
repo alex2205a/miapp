@@ -13,6 +13,11 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import ssl
+import subprocess
+import re
+import platform
+from datetime import datetime
+
 ssl._create_default_https_context = ssl._create_unverified_context
 
 load_dotenv()
@@ -60,6 +65,28 @@ class GrupoCreate(BaseModel):
     cuatrimestre: int
     periodo: str
 
+class ZonaWifiCreate(BaseModel):
+    nombre_zona: str
+    bssid_mac: str
+    tipo_zona: str = "salon"  # salon, libre
+
+
+def formatear_hora_12h(hora):
+    """
+    Convierte hora de 24h a 12h con AM/PM para MOSTRAR
+    Ejemplo: 13:30:00 → "1:30 PM"
+    """
+    if hora is None:
+        return None
+    try:
+        if isinstance(hora, str):
+            hora_obj = datetime.strptime(hora, "%H:%M:%S").time()
+        else:
+            hora_obj = hora
+        return hora_obj.strftime("%I:%M %p").lstrip('0')
+    except:
+        return str(hora)
+
 # ============================================
 # ========== ENDPOINTS PARA MAESTRO ==========
 # ============================================
@@ -86,7 +113,6 @@ def login_maestro(request: LoginMaestroRequest, db: Session = Depends(get_db)):
     }
 
 # ---- 2. CLASES DE HOY ----
-# ---- 2. CLASES DE HOY ----
 @app.get("/api/maestro/clases-hoy/{maestro_id}")
 def get_clases_hoy(maestro_id: str, db: Session = Depends(get_db)):
     dias_semana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
@@ -102,14 +128,14 @@ def get_clases_hoy(maestro_id: str, db: Session = Depends(get_db)):
             c.horario_fin,
             c.dia_semana,
             s.id as sesion_id,
-            s.activa as sesion_activa
+            s.activa as sesion_activa,
+            s.fecha as sesion_fecha
         FROM public.clases c
         LEFT JOIN public.sesiones_clase s ON c.id = s.clase_id 
             AND s.fecha = :hoy
-            AND s.activa = true
         WHERE c.maestro_id = :maestro_id 
           AND c.dia_semana = :dia_actual
-        ORDER BY c.id, s.hora_apertura DESC NULLS LAST
+        ORDER BY c.id, c.horario_inicio, s.hora_apertura DESC NULLS LAST
     """)
     
     clases = db.execute(query, {
@@ -119,61 +145,69 @@ def get_clases_hoy(maestro_id: str, db: Session = Depends(get_db)):
     }).fetchall()
     
     resultado = []
-    clase_proxima_id = None
-    menor_diferencia = float('inf')
     
     for c in clases:
         hora_inicio = c[2]
         hora_fin = c[3]
         sesion_id = c[5]
-        sesion_abierta = c[6] if c[6] is not None else False
+        sesion_activa = c[6] if c[6] is not None else False
         
-        # 🔥 PRIORIDAD: Si hay sesión abierta, es ACTIVA
-        if sesion_abierta:
+        # 🔥 REGLA 1: Si tiene sesión activa
+        if sesion_activa:
             estado = "activa"
             puede_abrir = False
-            puede_ver_asistencia = True  # ← CORREGIDO
-        elif hora_actual < hora_inicio:
-            estado = "pendiente"
-            puede_abrir = False
-            puede_ver_asistencia = False
-            diff = (datetime.combine(date.today(), hora_inicio) - datetime.combine(date.today(), hora_actual)).total_seconds()
-            if diff < menor_diferencia:
-                menor_diferencia = diff
-                clase_proxima_id = c[0]
-        elif hora_inicio <= hora_actual <= hora_fin:
-            estado = "pendiente"  # ← Cambiado: sin sesión = pendiente, no activa
-            puede_abrir = True
-            puede_ver_asistencia = False
-        else:
+            puede_ver_asistencia = True
+            mensaje = "🟢 Clase en curso"
+        
+        # 🔥 REGLA 2: Si ya tuvo sesión (se abrió y cerró)
+        elif sesion_id is not None and not sesion_activa:
             estado = "finalizada"
             puede_abrir = False
+            puede_ver_asistencia = True
+            mensaje = "✅ Clase finalizada"
+        
+        # 🔥 REGLA 3: Si NUNCA se abrió y la hora ya pasó
+        elif sesion_id is None and hora_actual > hora_fin:
+            estado = "nunca_abierta"
+            puede_abrir = False
             puede_ver_asistencia = False
+            mensaje = "❌ Clase nunca abierta"
+        
+        # 🔥 REGLA 4: Si está DENTRO del horario (se puede abrir)
+        elif sesion_id is None and hora_inicio <= hora_actual <= hora_fin:
+            estado = "proxima"
+            puede_abrir = True
+            puede_ver_asistencia = False
+            mensaje = "⭐ Clase en horario - Disponible"
+        
+        # 🔥 REGLA 5: Si es FUTURA (aún no llega su hora)
+        elif sesion_id is None and hora_actual < hora_inicio:
+            estado = "futura"
+            puede_abrir = False
+            puede_ver_asistencia = False
+            mensaje = f"⏳ Inicia a las {hora_inicio.strftime('%I:%M %p')}"
+        
+        # 🔥 REGLA 6: Cualquier otro caso (fallback)
+        else:
+            estado = "bloqueada"
+            puede_abrir = False
+            puede_ver_asistencia = False
+            mensaje = "🔒 No disponible"
         
         resultado.append({
             "id": c[0],
             "materia": c[1],
-            "hora_inicio": str(c[2]),
-            "hora_fin": str(c[3]),
+            "hora_inicio": formatear_hora_12h(c[2]),
+            "hora_fin": formatear_hora_12h(c[3]),
             "dia": c[4],
             "estado": estado,
+            "mensaje": mensaje,
             "sesion_id": sesion_id,
-            "sesion_abierta": sesion_abierta,
+            "sesion_abierta": sesion_activa,
             "puede_abrir": puede_abrir,
             "puede_ver_asistencia": puede_ver_asistencia,
-            "es_proxima": False
+            "es_proxima": estado == "proxima"
         })
-    
-    # Marcar la clase más cercana como "próxima" (solo si no hay sesión)
-    tiene_activa = any(c["estado"] == "activa" for c in resultado)
-    
-    if not tiene_activa and clase_proxima_id is not None:
-        for c in resultado:
-            if c["id"] == clase_proxima_id:
-                c["estado"] = "proxima"
-                c["puede_abrir"] = True
-                c["es_proxima"] = True
-                break
     
     return resultado
 
@@ -183,49 +217,68 @@ def abrir_sesion(request: IniciarSesionRequest, db: Session = Depends(get_db)):
     hoy = date.today()
     ahora = datetime.now().time()
     
+    # 1. Verificar que la clase existe
+    clase = db.execute(
+        text("SELECT id, nombre_materia, horario_inicio, horario_fin FROM clases WHERE id = :id"),
+        {"id": request.clase_id}
+    ).fetchone()
+    
+    if not clase:
+        raise HTTPException(status_code=404, detail="Clase no encontrada")
+    
+    # 2. Verificar si ya tiene sesión activa
     sesion_activa = db.execute(text("""
-        SELECT id, hora_apertura FROM public.sesiones_clase 
+        SELECT id FROM sesiones_clase 
         WHERE clase_id = :c AND fecha = :h AND activa = true
     """), {"c": request.clase_id, "h": hoy}).fetchone()
     
     if sesion_activa:
-        return {
-            "status": "warning", 
-            "message": "Ya hay una sesión activa para esta clase hoy. Ciérrala primero.",
-            "sesion_id": sesion_activa[0]
-        }
+        raise HTTPException(status_code=400, detail="⚠️ Esta clase ya tiene una sesión activa")
     
-    hora_actual_redondeada = ahora.replace(second=0, microsecond=0)
+    # 🔥 3. VALIDACIÓN PRINCIPAL: ¿Está en horario?
+    hora_inicio = clase[2]
+    hora_fin = clase[3]
     
-    sesion_misma_hora = db.execute(text("""
-        SELECT id, hora_apertura, activa 
-        FROM public.sesiones_clase 
-        WHERE clase_id = :c 
-          AND fecha = :h
-          AND DATE_TRUNC('minute', hora_apertura)::time = :hora_redondeada
+    # Verificar si la hora actual está dentro del rango
+    if not (hora_inicio <= ahora <= hora_fin):
+        hora_inicio_str = hora_inicio.strftime('%I:%M %p')
+        hora_fin_str = hora_fin.strftime('%I:%M %p')
+        ahora_str = ahora.strftime('%I:%M %p')
+        
+        raise HTTPException(
+            status_code=400,
+            detail=f"❌ No puedes abrir esta clase ahora. Son las {ahora_str}, el horario es de {hora_inicio_str} a {hora_fin_str}"
+        )
+    
+    # 4. Verificar si hay otra clase activa (para evitar conflictos)
+    otra_activa = db.execute(text("""
+        SELECT s.id, c.nombre_materia
+        FROM sesiones_clase s
+        JOIN clases c ON s.clase_id = c.id
+        WHERE s.fecha = :hoy 
+          AND s.activa = true
+          AND s.clase_id != :clase_id
     """), {
-        "c": request.clase_id, 
-        "h": hoy,
-        "hora_redondeada": hora_actual_redondeada
+        "hoy": hoy,
+        "clase_id": request.clase_id
     }).fetchone()
     
-    if sesion_misma_hora:
-        estado = "activa" if sesion_misma_hora[2] else "cerrada"
-        return {
-            "status": "warning",
-            "message": f"Ya hay una sesión {estado} para esta clase a la misma hora ({ahora.strftime('%H:%M')})",
-            "sesion_id": sesion_misma_hora[0]
-        }
+    if otra_activa:
+        raise HTTPException(
+            status_code=400,
+            detail=f"⚠️ Ya hay una clase activa: {otra_activa[1]}. Ciérrala primero."
+        )
     
+    # 5. Proceder con la apertura
     result = db.execute(text("""
-        INSERT INTO public.sesiones_clase (clase_id, fecha, activa) 
-        VALUES (:c, :h, true) RETURNING id
+        INSERT INTO sesiones_clase (clase_id, fecha, activa, hora_apertura) 
+        VALUES (:c, :h, true, NOW()) RETURNING id
     """), {"c": request.clase_id, "h": hoy})
     db.commit()
     
     return {
         "status": "success", 
-        "message": "Sesión iniciada correctamente",
+        "message": f"✅ Sesión abierta para {clase[1]}",
         "sesion_id": result.fetchone()[0]
     }
 
@@ -288,7 +341,7 @@ def get_asistencia_clase(clase_id: int, db: Session = Depends(get_db)):
         "nombre": r[1],
         "matricula": r[2],
         "estado": r[3],
-        "hora_registro": str(r[4]) if r[4] else None,
+        "hora_registro": formatear_hora_12h(r[4]) if r[4] else None,
         "sesion_id": r[5] if r[5] else None,
         "sesion_activa": r[6] if r[6] else False
     } for r in alumnos]
@@ -322,7 +375,7 @@ def get_detalle_sesion(sesion_id: int, db: Session = Depends(get_db)):
         "nombre": r[1],
         "matricula": r[2],
         "estado": r[3],
-        "hora_registro": str(r[4]) if r[4] else None
+        "hora_registro": formatear_hora_12h(r[4]) if r[4] else None
     } for r in alumnos]
 
 # ---- 7. ESTADÍSTICAS DEL MAESTRO ----
@@ -436,16 +489,16 @@ def get_historial_clases(
         
         historial.append({
             "id": r[0],
-            "materia": r[1],
-            "hora_inicio": str(r[2]),
-            "hora_fin": str(r[3]),
-            "fecha": str(r[4]),  # ← USA LA FECHA REAL DE LA SESIÓN
-            "sesion_id": r[5],   # ← USA EL ID REAL DE LA SESIÓN
-            "activa": r[6],
-            "hora_apertura": str(r[7]),
-            "total_inscritos": r[8] or 0,
-            "total_presentes": r[9] or 0,
-            "porcentaje": round((r[9] / r[8] * 100) if r[8] and r[8] > 0 else 0, 2)
+    "materia": r[1],
+    "hora_inicio": formatear_hora_12h(r[2]),
+    "hora_fin": formatear_hora_12h(r[3]),
+    "fecha": str(r[4]),
+    "sesion_id": r[5],
+    "activa": r[6],
+    "hora_apertura": formatear_hora_12h(r[7]) if r[7] else None,
+    "total_inscritos": r[8] or 0,
+    "total_presentes": r[9] or 0,
+    "porcentaje": round((r[9] / r[8] * 100) if r[8] and r[8] > 0 else 0, 2)
         })
     
     return historial
@@ -557,7 +610,7 @@ def get_sesion_info(sesion_id: int, db: Session = Depends(get_db)):
     return {
         "id": resultado[0],
         "fecha": str(resultado[1]),
-        "hora_apertura": str(resultado[2]),
+        "hora_apertura": formatear_hora_12h(resultado[2]) if resultado[2] else None,
         "activa": resultado[3],
         "materia": resultado[4]
     }
@@ -623,8 +676,8 @@ def get_horario_alumno(alumno_id: str, db: Session = Depends(get_db)):
             resultado.append({
                 "id": c[0],
                 "materia": c[1],
-                "hora_inicio": str(c[2]),
-                "hora_fin": str(c[3]),
+                "hora_inicio": formatear_hora_12h(c[2]),
+                "hora_fin": formatear_hora_12h(c[3]),
                 "dia": c[4],
                 "salon": "B-7",  # O el salón real si lo tienes
                 "sesion_id": c[6] if c[6] else None,
@@ -810,7 +863,7 @@ def get_admin_estadisticas(db: Session = Depends(get_db)):
     for row in ultimas:
         ultimas_actividades.append({
             "descripcion": f"{row[0]} marcó asistencia en {row[1]}",
-            "hora": row[2].strftime("%H:%M")
+            "hora": formatear_hora_12h(row[2]) if row[2] else None
         })
     
     return {
@@ -1089,7 +1142,9 @@ def get_admin_clases(db: Session = Depends(get_db)):
             p.nombre as maestro_nombre,
             z.nombre_zona as zona_nombre,
             COUNT(i.id) as total_alumnos,
-            c.grupo_id
+            c.grupo_id,
+            c.maestro_id,
+            c.zona_id 
         FROM clases c
         LEFT JOIN perfiles_usuarios p ON c.maestro_id = p.id
         LEFT JOIN zonas_wifi z ON c.zona_id = z.id
@@ -1103,13 +1158,14 @@ def get_admin_clases(db: Session = Depends(get_db)):
         "id": r[0],
         "materia": r[1],
         "dia": r[2],
-        "hora_inicio": str(r[3]),
-        "hora_fin": str(r[4]),
+        "hora_inicio": formatear_hora_12h(r[3]),
+        "hora_fin": formatear_hora_12h(r[4]),
         "maestro": r[5] or "Sin asignar",
         "zona": r[6] or "Sin zona",
         "total_alumnos": r[7] or 0,
         "grupo_id": r[8],
-        "grupo_nombre": f"Grupo {r[8]}" if r[8] else "Sin grupo"  # Genera un nombre temporal
+        "maestro_id": str(r[9]) if r[9] else None,  
+        "zona_id": r[10] if r[10] else None
     } for r in resultados]
 # ---- 2. CREAR/EDITAR CLASE ----
 class ClaseCreate(BaseModel):
@@ -1567,6 +1623,130 @@ def desinscribir_grupo_clase(clase_id: int, db: Session = Depends(get_db)):
         "message": f"Alumnos desinscritos correctamente",
         "eliminados": result.rowcount
     }
+
+
+@app.get("/api/admin/zonas-wifi")
+def get_zonas_wifi(db: Session = Depends(get_db)):
+    query = text("SELECT id, nombre_zona, bssid_mac, tipo_zona FROM zonas_wifi ORDER BY nombre_zona")
+    resultados = db.execute(query).fetchall()
+    return [{
+        "id": r[0],
+        "nombre": r[1],
+        "bssid": r[2],
+        "tipo": r[3]
+    } for r in resultados]
+
+@app.post("/api/admin/zona-wifi")
+def crear_zona_wifi(zona: ZonaWifiCreate, db: Session = Depends(get_db)):
+    existe = db.execute(
+        text("SELECT id FROM zonas_wifi WHERE bssid_mac = :bssid"),
+        {"bssid": zona.bssid_mac}
+    ).fetchone()
+    if existe:
+        raise HTTPException(status_code=400, detail="El BSSID ya está registrado")
+    
+    result = db.execute(text("""
+        INSERT INTO zonas_wifi (nombre_zona, bssid_mac, tipo_zona)
+        VALUES (:nombre, :bssid, :tipo) RETURNING id
+    """), {
+        "nombre": zona.nombre_zona,
+        "bssid": zona.bssid_mac,
+        "tipo": zona.tipo_zona
+    })
+    db.commit()
+    return {"status": "success", "id": result.fetchone()[0], "message": "Zona WiFi creada"}
+
+@app.put("/api/admin/zona-wifi/{zona_id}")
+def editar_zona_wifi(zona_id: int, zona: ZonaWifiCreate, db: Session = Depends(get_db)):
+    existe = db.execute(
+        text("SELECT id FROM zonas_wifi WHERE id = :id"),
+        {"id": zona_id}
+    ).fetchone()
+    if not existe:
+        raise HTTPException(status_code=404, detail="Zona no encontrada")
+    
+    duplicado = db.execute(
+        text("SELECT id FROM zonas_wifi WHERE bssid_mac = :bssid AND id != :id"),
+        {"bssid": zona.bssid_mac, "id": zona_id}
+    ).fetchone()
+    if duplicado:
+        raise HTTPException(status_code=400, detail="El BSSID ya está registrado en otra zona")
+    
+    db.execute(text("""
+        UPDATE zonas_wifi SET nombre_zona = :nombre, bssid_mac = :bssid, tipo_zona = :tipo
+        WHERE id = :id
+    """), {
+        "id": zona_id,
+        "nombre": zona.nombre_zona,
+        "bssid": zona.bssid_mac,
+        "tipo": zona.tipo_zona
+    })
+    db.commit()
+    return {"status": "success", "message": "Zona WiFi actualizada"}
+
+@app.delete("/api/admin/zona-wifi/{zona_id}")
+def eliminar_zona_wifi(zona_id: int, db: Session = Depends(get_db)):
+    en_uso = db.execute(
+        text("SELECT id FROM clases WHERE zona_id = :id LIMIT 1"),
+        {"id": zona_id}
+    ).fetchone()
+    if en_uso:
+        raise HTTPException(status_code=400, detail="No se puede eliminar la zona porque está asignada a una clase")
+    
+    db.execute(
+        text("DELETE FROM zonas_wifi WHERE id = :id"),
+        {"id": zona_id}
+    )
+    db.commit()
+    return {"status": "success", "message": "Zona WiFi eliminada"}
+
+# ============================================
+# FUNCIÓN PARA OBTENER BSSID (SISTEMA OPERATIVO)
+# ============================================
+def obtener_bssid_sistema():
+    os_name = platform.system()
+    try:
+        if os_name == "Windows":
+            # Windows: netsh wlan show interfaces
+            output = subprocess.check_output(["netsh", "wlan", "show", "interfaces"], 
+                                             encoding="utf-8", 
+                                             creationflags=subprocess.CREATE_NO_WINDOW)
+            # Buscar "BSSID" o "Dirección física" (en español)
+            match = re.search(r"BSSID\s*:\s*([0-9A-Fa-f:]{17})", output)
+            if match:
+                return match.group(1)
+            # Fallback: Buscar "Dirección física" (puede ser en español)
+            match = re.search(r"Direcci[óo]n física\s*:\s*([0-9A-Fa-f:]{17})", output)
+            if match:
+                return match.group(1)
+                
+        elif os_name == "Linux":
+            # Linux: iwconfig
+            output = subprocess.check_output(["iwconfig"], encoding="utf-8")
+            match = re.search(r"Access Point:\s*([0-9A-Fa-f:]{17})", output)
+            if match:
+                return match.group(1)
+                
+        elif os_name == "Darwin":  # macOS
+            # macOS: airport -I
+            airport_path = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
+            output = subprocess.check_output([airport_path, "-I"], encoding="utf-8")
+            match = re.search(r"BSSID:\s*([0-9A-Fa-f:]{17})", output)
+            if match:
+                return match.group(1)
+    except Exception as e:
+        print(f"⚠️ Error obteniendo BSSID: {e}")
+    return None
+
+# ---- ENDPOINT PARA OBTENER BSSID ACTUAL ----
+@app.get("/api/admin/bssid-actual")
+def get_bssid_actual():
+    bssid = obtener_bssid_sistema()
+    if bssid:
+        return {"bssid": bssid, "success": True}
+    else:
+        raise HTTPException(status_code=404, detail="No se pudo obtener el BSSID de la red actual. Asegúrate de estar conectado a WiFi.")
+
 # ============================================
 # ========== VISTAS HTML ==========
 # ============================================
@@ -1612,5 +1792,11 @@ def admin_clases(request: Request):
 def admin_carreras(request: Request):
     return templates.TemplateResponse( request, "admin/carreras.html")
 
+# ---- VISTA PARA ZONAS WIFI ----
+@app.get("/admin/zonas-wifi", response_class=HTMLResponse)
+def admin_zonas_wifi(request: Request):
+    return templates.TemplateResponse(request, "admin/zonas_wifi.html")
+
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
