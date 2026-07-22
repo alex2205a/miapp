@@ -1701,51 +1701,80 @@ def eliminar_zona_wifi(zona_id: int, db: Session = Depends(get_db)):
     return {"status": "success", "message": "Zona WiFi eliminada"}
 
 # ============================================
-# FUNCIÓN PARA OBTENER BSSID (SISTEMA OPERATIVO)
+# FUNCIÓN PARA OBTENER BSSID (VERSIÓN RENDER)
 # ============================================
+
 def obtener_bssid_sistema():
-    os_name = platform.system()
+    """
+    Intenta obtener el BSSID de la red actual.
+    En Render, siempre falla porque no tiene acceso al hardware WiFi.
+    """
     try:
+        # Intentar con el método tradicional (solo funciona local)
+        os_name = platform.system()
+        
         if os_name == "Windows":
-            # Windows: netsh wlan show interfaces
             output = subprocess.check_output(["netsh", "wlan", "show", "interfaces"], 
                                              encoding="utf-8", 
                                              creationflags=subprocess.CREATE_NO_WINDOW)
-            # Buscar "BSSID" o "Dirección física" (en español)
             match = re.search(r"BSSID\s*:\s*([0-9A-Fa-f:]{17})", output)
             if match:
                 return match.group(1)
-            # Fallback: Buscar "Dirección física" (puede ser en español)
             match = re.search(r"Direcci[óo]n física\s*:\s*([0-9A-Fa-f:]{17})", output)
             if match:
                 return match.group(1)
                 
         elif os_name == "Linux":
-            # Linux: iwconfig
+            # Intentar con iwconfig
             output = subprocess.check_output(["iwconfig"], encoding="utf-8")
             match = re.search(r"Access Point:\s*([0-9A-Fa-f:]{17})", output)
             if match:
                 return match.group(1)
                 
         elif os_name == "Darwin":  # macOS
-            # macOS: airport -I
             airport_path = "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
             output = subprocess.check_output([airport_path, "-I"], encoding="utf-8")
             match = re.search(r"BSSID:\s*([0-9A-Fa-f:]{17})", output)
             if match:
                 return match.group(1)
+                
     except Exception as e:
-        print(f"⚠️ Error obteniendo BSSID: {e}")
+        print(f"⚠️ Error obteniendo BSSID local: {e}")
+    
+    # 🔥 Si estamos en Render o falló, devolver None
     return None
 
 # ---- ENDPOINT PARA OBTENER BSSID ACTUAL ----
 @app.get("/api/admin/bssid-actual")
 def get_bssid_actual():
+    """
+    Intenta obtener el BSSID de la red actual.
+    En Render devuelve un mensaje claro indicando que no es posible.
+    """
     bssid = obtener_bssid_sistema()
+    
     if bssid:
-        return {"bssid": bssid, "success": True}
+        return {
+            "bssid": bssid, 
+            "success": True,
+            "source": "local"
+        }
     else:
-        raise HTTPException(status_code=404, detail="No se pudo obtener el BSSID de la red actual. Asegúrate de estar conectado a WiFi.")
+        # 🔥 Mensaje claro para Render
+        return {
+            "bssid": None,
+            "success": False,
+            "source": "render",
+            "message": "⚠️ No se puede escanear automáticamente en Render.\n\n"
+                      "📋 Para obtener el BSSID manualmente:\n"
+                      "1. Abre la terminal o CMD en tu PC\n"
+                      "2. Ejecuta:\n"
+                      "   • Windows: netsh wlan show interfaces | findstr BSSID\n"
+                      "   • Linux/Mac: iwconfig | grep 'Access Point'\n"
+                      "3. Copia el valor (ej: 00:11:22:33:44:55)\n"
+                      "4. Pégarlo en el campo BSSID",
+            "manual": True
+        }
 
 # ============================================
 # ========== VISTAS HTML ==========
