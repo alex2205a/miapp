@@ -86,18 +86,10 @@
                     <i class="fas fa-chalkboard w-5 text-center"></i> Clases
                    
                 </a>
-                <a href="#" id="btn-zonas" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
-                    <i class="fas fa-wifi w-5 text-center"></i> Zonas WiFi
-                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-zonas">0</span>
-                </a>
-                <a href="#" id="btn-inscripciones" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
-                    <i class="fas fa-user-graduate w-5 text-center"></i> Inscripciones
-                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-inscripciones">0</span>
-                </a>
-                <a href="#" id="btn-sesiones" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
-                    <i class="fas fa-door-open w-5 text-center"></i> Sesiones
-                    <span class="ml-auto bg-slate-700 text-slate-300 text-xs px-2 py-0.5 rounded-full" id="badge-sesiones">0</span>
-                </a>
+                <a href="#" id="btn-zonas-wifi" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
+    <i class="fas fa-wifi w-5 text-center"></i> Zonas WiFi
+    
+</a>
                 <hr class="my-4 border-slate-700">
                 <a href="#" id="btn-reportes" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition">
                     <i class="fas fa-file-alt w-5 text-center"></i> Reportes
@@ -397,6 +389,41 @@ async function cargarVista(url, contenedorId) {
             }
         }
 
+
+async function cargarZonasWifi() {
+    const contenedor = document.getElementById('contenido-principal');
+    contenedor.innerHTML = `<div class="flex items-center justify-center h-64"><div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-blue-500 mb-4"></i><p class="text-slate-500">Cargando zonas WiFi...</p></div></div>`;
+
+    try {
+        const response = await fetch('/admin/zonas-wifi', { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+        contenedor.innerHTML = html;
+
+        const scripts = contenedor.querySelectorAll('script');
+        scripts.forEach(oldScript => {
+            const newScript = document.createElement('script');
+            newScript.textContent = oldScript.textContent;
+            if (oldScript.src) newScript.src = oldScript.src;
+            if (oldScript.type) newScript.type = oldScript.type;
+            oldScript.parentNode.replaceChild(newScript, oldScript);
+        });
+
+        console.log('✅ Zonas WiFi cargadas correctamente');
+    } catch (error) {
+        contenedor.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+                <h3 class="text-lg font-semibold text-red-700">Error al cargar zonas WiFi</h3>
+                <p class="text-red-500 text-sm">${error.message}</p>
+                <button onclick="cargarZonasWifi()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+                    <i class="fas fa-redo"></i> Reintentar
+                </button>
+            </div>
+        `;
+    }
+}
+
         // ============================================
         // NAVEGACIÓN PRINCIPAL
         // ============================================
@@ -423,19 +450,13 @@ document.getElementById('btn-carreras').addEventListener('click', function(e) {
     cargarVista('/admin/carreras', 'contenido-principal');
 });
 
-       /* document.getElementById('btn-zonas').addEventListener('click', function(e) {
-            e.preventDefault();
-            setActiveTab('btn-zonas');
-            document.getElementById('contenido-principal').innerHTML = `
-                <div class="bg-white rounded-2xl shadow-lg p-8 text-center">
-                    <i class="fas fa-wifi text-6xl text-green-300 mb-4"></i>
-                    <h2 class="text-xl font-semibold text-slate-600">Gestión de Zonas WiFi</h2>
-                    <p class="text-slate-400">Próximamente</p>
-                </div>
-            `;
-        });
+        document.getElementById('btn-zonas-wifi').addEventListener('click', function(e) {
+    e.preventDefault();
+    setActiveTab('btn-zonas-wifi');
+    cargarZonasWifi();
+});
 
-        document.getElementById('btn-inscripciones').addEventListener('click', function(e) {
+        /*document.getElementById('btn-inscripciones').addEventListener('click', function(e) {
             e.preventDefault();
             setActiveTab('btn-inscripciones');
             document.getElementById('contenido-principal').innerHTML = `
