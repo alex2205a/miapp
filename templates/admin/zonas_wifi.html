@@ -28,6 +28,11 @@
         .flex-center { display: flex; align-items: center; gap: 0.5rem; }
         .btn-wifi { background: #0ea5e9; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
         .btn-wifi:hover { background: #0284c7; }
+        .btn-wifi-manual { background: #8b5cf6; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; border: none; cursor: pointer; }
+        .btn-wifi-manual:hover { background: #7c3aed; }
+        .mensaje-exito { color: #16a34a; }
+        .mensaje-error { color: #dc2626; }
+        .mensaje-info { color: #f59e0b; }
     </style>
 </head>
 <body>
@@ -63,11 +68,14 @@
                             <button type="button" onclick="escanearyRellenarBSSID()" class="btn-wifi text-sm px-4 py-2 rounded-lg">
                                 <i class="fas fa-wifi mr-1"></i> Escanear red actual
                             </button>
+                            <button type="button" onclick="ingresarBSSIDManual()" class="btn-wifi-manual text-sm px-4 py-2 rounded-lg">
+                                <i class="fas fa-pen mr-1"></i> Ingresar manual
+                            </button>
                             <button type="button" onclick="mostrarAyuda()" class="text-sm text-blue-500 hover:underline">
                                 <i class="fas fa-question-circle mr-1"></i> ¿Cómo obtener el BSSID?
                             </button>
-                            <span id="mensaje-bssid" class="text-xs text-slate-500"></span>
                         </div>
+                        <div id="mensaje-bssid" class="text-xs text-slate-500 mt-1"></div>
                         <p class="text-xs text-slate-400 mt-1">Dirección MAC del router/AP del salón</p>
                     </div>
                     <div>
@@ -183,11 +191,13 @@
                 alert(
                     '🔍 Cómo obtener el BSSID de tu red WiFi:\n\n' +
                     '📌 En Windows:\n' +
-                    '   Abre CMD y ejecuta: ipconfig /all\n' +
-                    '   Busca la dirección física (MAC) de tu adaptador WiFi.\n\n' +
+                    '   Abre CMD y ejecuta: netsh wlan show interfaces | findstr BSSID\n' +
+                    '   Copia el valor (ej: 00:11:22:33:44:55)\n\n' +
                     '📌 En macOS:\n' +
-                    '   Abre Terminal y ejecuta: ifconfig en0\n' +
-                    '   Busca "ether".\n\n' +
+                    '   Abre Terminal y ejecuta: /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I\n' +
+                    '   Busca "BSSID"\n\n' +
+                    '📌 En Linux:\n' +
+                    '   Abre Terminal y ejecuta: iwconfig | grep "Access Point"\n\n' +
                     '📌 En Android:\n' +
                     '   Ve a Ajustes → WiFi → Red conectada\n' +
                     '   La MAC suele aparecer en detalles.\n\n' +
@@ -195,36 +205,78 @@
                     '   Ve a Ajustes → General → Información → WiFi\n' +
                     '   Busca la dirección MAC.\n\n' +
                     '📌 En router:\n' +
-                    '   La MAC suele estar impresa en una etiqueta en el dispositivo.'
+                    '   La MAC suele estar impresa en una etiqueta en el dispositivo.\n\n' +
+                    '📌 Formato correcto: AA:BB:CC:DD:EE:FF'
                 );
             };
 
             // ============================================================
-            // 🔥 ESCANEAR BSSID USANDO EL BACKEND (PYTHON)
+            // 🔥 FUNCIÓN PARA INGRESAR BSSID MANUALMENTE
+            // ============================================================
+            window.ingresarBSSIDManual = function() {
+                const bssid = prompt(
+                    '📋 Ingresa el BSSID de tu red WiFi:\n\n' +
+                    'Formato: AA:BB:CC:DD:EE:FF\n\n' +
+                    '💡 Cómo obtenerlo:\n' +
+                    '• Windows: netsh wlan show interfaces | findstr BSSID\n' +
+                    '• Mac: /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -I\n' +
+                    '• Linux: iwconfig | grep "Access Point"\n' +
+                    '• Router: Busca la etiqueta con la dirección MAC'
+                );
+                
+                if (bssid === null) {
+                    // Usuario canceló
+                    return;
+                }
+                
+                const bssidLimpio = bssid.trim().toUpperCase();
+                const valido = /^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/i.test(bssidLimpio);
+                
+                if (valido) {
+                    document.getElementById('bssid_mac').value = bssidLimpio;
+                    const mensaje = document.getElementById('mensaje-bssid');
+                    mensaje.innerHTML = `✅ BSSID ingresado manualmente: <strong>${bssidLimpio}</strong>`;
+                    mensaje.className = 'text-xs text-green-600';
+                } else {
+                    alert('❌ Formato inválido.\n\n' +
+                          'El formato debe ser: AA:BB:CC:DD:EE:FF\n' +
+                          'Ejemplo: 00:11:22:33:44:55\n\n' +
+                          'Asegúrate de usar solo números y letras (A-F).');
+                }
+            };
+
+            // ============================================================
+            // 🔥 ESCANEAR BSSID (VERSIÓN MEJORADA PARA RENDER)
             // ============================================================
             window.escanearyRellenarBSSID = async function() {
                 const mensaje = document.getElementById('mensaje-bssid');
-                mensaje.textContent = '🔍 Escaneando red...';
+                mensaje.innerHTML = '🔍 Escaneando red...';
                 mensaje.className = 'text-xs text-blue-500';
 
                 try {
                     const response = await fetch('/api/admin/bssid-actual');
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.detail || 'Error al obtener BSSID');
-                    }
                     const data = await response.json();
-                    if (data.bssid) {
+                    
+                    if (data.success && data.bssid) {
+                        // ✅ BSSID obtenido exitosamente
                         document.getElementById('bssid_mac').value = data.bssid;
-                        mensaje.textContent = `✅ BSSID obtenido: ${data.bssid}`;
+                        mensaje.innerHTML = `✅ BSSID obtenido automáticamente: <strong>${data.bssid}</strong>`;
                         mensaje.className = 'text-xs text-green-600';
+                    } else if (data.manual) {
+                        // 🔥 En Render, mostrar mensaje y ofrecer ingresar manualmente
+                        mensaje.innerHTML = `
+                            ⚠️ <strong>No se puede escanear automáticamente en este entorno.</strong><br>
+                            <span class="text-slate-500">Haz clic en "Ingresar manual" para pegar el BSSID.</span>
+                        `;
+                        mensaje.className = 'text-xs text-yellow-600';
                     } else {
-                        throw new Error('No se recibió BSSID');
+                        throw new Error(data.message || 'No se pudo obtener el BSSID');
                     }
                 } catch (error) {
+                    console.error('Error:', error);
                     mensaje.innerHTML = `
                         ⚠️ ${error.message}<br>
-                        <span class="text-slate-500">Puedes ingresarlo manualmente.</span>
+                        <span class="text-slate-500">Haz clic en "Ingresar manual" para pegar el BSSID.</span>
                     `;
                     mensaje.className = 'text-xs text-yellow-600';
                 }
@@ -237,7 +289,7 @@
                 const modal = document.getElementById('modal-zona');
                 modal.classList.add('open');
                 const mensaje = document.getElementById('mensaje-bssid');
-                mensaje.textContent = '';
+                mensaje.innerHTML = '';
                 mensaje.className = 'text-xs text-slate-500';
                 if (zona) {
                     document.getElementById('modal-titulo').textContent = 'Editar Zona WiFi';
